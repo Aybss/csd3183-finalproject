@@ -47,3 +47,5 @@ sysinfo.txt
 
 ## Asset meta backups
 *.tmp
+# Allow the Plugins folder so your team gets the latest DLL!
+!Assets/Plugins/
