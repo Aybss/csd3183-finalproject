@@ -16,4 +16,4 @@ build/
 [Uu]ser[Ss]ettings/
 
 # Allow the Plugins folder so your team gets the latest DLL!
-!Unity_Frontend/Assets/Plugins/
+!Assets/Plugins/
