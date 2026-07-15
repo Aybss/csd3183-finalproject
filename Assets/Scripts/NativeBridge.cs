@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Runtime.InteropServices;
 using UnityEngine;
 
@@ -8,22 +9,23 @@ using UnityEngine;
 public static class NativeBridge
 {
     private const string DLL_NAME = "CooperativeMazeSurvival";
+    private const string CORE_DLL = "PathfinderCore";
 
-    [DllImport("PathfinderCore")]
+    [DllImport(CORE_DLL, EntryPoint = "InitializeGrid", CallingConvention = CallingConvention.Cdecl)]
+    public static extern void InitializeGrid(int width, int height);
+
+    [DllImport(CORE_DLL, EntryPoint = "SetCellBlocked", CallingConvention = CallingConvention.Cdecl)]
     public static extern void SetCellBlocked(int x, int y, int blocked);
 
-    [DllImport("PathfinderCore")]
-    public static extern void LoadObstacleData(IntPtr data, int length);
-
-    [DllImport("PathfinderCore")]
-    public static extern int FindPath(
-        int startX, int startY, int endX, int endY,
-        int[] outX, int[] outY, int maxPathLength
-    );
+    // Changed signature parameter from IntPtr to byte[] to auto-marshal the array pointer
+    [DllImport(CORE_DLL, EntryPoint = "LoadObstacleData", CallingConvention = CallingConvention.Cdecl)]
+    public static extern void LoadObstacleData(byte[] data, int length);
 
     [DllImport(DLL_NAME, CallingConvention = CallingConvention.Cdecl)]
     private static extern int FindPath(int startX, int startY, int endX, int endY,
                                         int[] outX, int[] outY, int maxPathLength);
+
+    [DllImport(DLL_NAME, EntryPoint = "CreateAgent", CallingConvention = CallingConvention.Cdecl)]
     public static extern int CreateAgentNative(int role);
 
     [DllImport(DLL_NAME, EntryPoint = "DestroyAgent", CallingConvention = CallingConvention.Cdecl)]
@@ -135,7 +137,7 @@ public static class NativeBridge
 
     /// <summary>Plans a path using the given agent's own knowledge.</summary>
     public static List<Vector2Int> FindAgentPath(int agentHandle, int startX, int startY, int endX, int endY,
-                                                   int maxPathLength = 4096)
+                                                 int maxPathLength = 4096)
     {
         if (agentHandle < 0) return null;
 

@@ -3,6 +3,17 @@ using UnityEngine;
 
 namespace ProceduralTerrain
 {
+    // --- LIGHTWEIGHT EXPORT STRUCT ---
+    [System.Serializable]
+    public struct SimpleNodeData
+    {
+        public int x;
+        public int y;
+        public bool isWalkable;
+        public float movementCost;
+        public int biomeType;
+    }
+
     public class PrimsTerrainGenerator : MonoBehaviour
     {
         [Header("Grid Scale Settings")]
@@ -202,7 +213,7 @@ namespace ProceduralTerrain
                         else if (landNW) { selectedTile = tilePack.ground_riverSideOpen.prefab; baseRotation = 270f; appliedRiverYOffset = tilePack.ground_riverSideOpen.yOffset; }
                     }
 
-                    // Fallback configuration: if no shore piece was selected, guarantee a water center
+                    // Fallback configuration
                     if (selectedTile == null)
                     {
                         selectedTile = tilePack.waterCenter.prefab;
@@ -338,10 +349,9 @@ namespace ProceduralTerrain
         {
             return x >= 0 && x < width && y >= 0 && y < height;
         }
-    }
 
-    // Returns a 2D array of lightweight structs ready for pathfinding
-    public SimpleNodeData[,] ExportLightweight2DArray()
+        // --- EXPORT 2D ARRAY METHOD (Safely situated inside the Class boundaries) ---
+        public SimpleNodeData[,] ExportLightweight2DArray()
         {
             SimpleNodeData[,] dataMatrix = new SimpleNodeData[width, height];
 
@@ -365,3 +375,4 @@ namespace ProceduralTerrain
             return dataMatrix;
         }
     }
+}
