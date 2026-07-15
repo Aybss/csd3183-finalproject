@@ -13,35 +13,35 @@ MonoBehaviour:
   m_Name: PropLibrary
   m_EditorClassIdentifier: 
   props:
-  - displayName: building-a
+  - displayName: Building A
     prefab: {fileID: 919132149155446097, guid: 40b8cfd94dafb2b4aa44103d329ebdf8, type: 3}
     icon: {fileID: 21300000, guid: 3b25f7ea1a8f1ea41879706abb58d3be, type: 3}
     footprintSize: {x: 4, y: 4}
     isWheelchairObstacle: 1
     needsAudioCue: 1
     needsVisualCue: 1
-  - displayName: building-p
+  - displayName: Building P
     prefab: {fileID: 919132149155446097, guid: d5baa1c927bab484a918520754cc55f1, type: 3}
     icon: {fileID: 21300000, guid: 4d81563f3a009a446b54d4f61a0b2faf, type: 3}
     footprintSize: {x: 4, y: 4}
     isWheelchairObstacle: 1
     needsAudioCue: 1
     needsVisualCue: 1
-  - displayName: tree-large
+  - displayName: Large Tree
     prefab: {fileID: 919132149155446097, guid: 2d8142772f8ab1f4c8b0bcfa74ff5007, type: 3}
     icon: {fileID: 21300000, guid: 71f5982e53304b74098d206d515ad3a8, type: 3}
     footprintSize: {x: 2, y: 2}
     isWheelchairObstacle: 1
     needsAudioCue: 1
     needsVisualCue: 1
-  - displayName: fence
+  - displayName: Fence
     prefab: {fileID: 919132149155446097, guid: 593780d12655edf4195a5d510c38c163, type: 3}
     icon: {fileID: 21300000, guid: bd837650ece2163498f53c78e10001d4, type: 3}
     footprintSize: {x: 1, y: 1}
     isWheelchairObstacle: 1
     needsAudioCue: 1
     needsVisualCue: 1
-  - displayName: planter
+  - displayName: Planter
     prefab: {fileID: 919132149155446097, guid: e6947a51fa0be304492335677330a56d, type: 3}
     icon: {fileID: 21300000, guid: a5e41cd3748040140a89655abdc7571a, type: 3}
     footprintSize: {x: 1, y: 1}
