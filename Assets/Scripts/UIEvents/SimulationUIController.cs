@@ -12,16 +12,27 @@ public class SimulationEvent : MonoBehaviour
 
     // Agent Interactions
     [SerializeField] private TMP_Dropdown AgentSelectDropdown;
-    [SerializeField] private Button KillAgentButton;
     [SerializeField] private Button CreateAgentButton;
+    [SerializeField] private Button ViewAgentButton;
+    [SerializeField] private TMP_Dropdown AgentTypeDropdown;
+    [SerializeField] private Button KillAgentButton;
+
+    private int CurrentAgentIndex = 0;
 
     private void Start()
     {
         // Agent Interactions --------------------------------------------------------//
         // ---------------------------------------------------------------------------//
 
+        // Initialize dropdowns
+        AgentTypeDropdown.ClearOptions();
+        AgentTypeDropdown.AddOptions(new List<string> { "Blind", "Deaf", "Cripple" });
+        AgentSelectDropdown.ClearOptions();
+        AgentTypeDropdown.AddOptions(new List<string> { "Select" });
+
         // Agent buttons initial state: Greyed out
         SetAgentButtonsInteractable(false);    
+        OnAgentSelected(0);
 
         // Listen to AgentList changes
         AgentManager.OnAgentListChanged += RefreshDropdown;
@@ -60,9 +71,16 @@ public class SimulationEvent : MonoBehaviour
 
     }
 
+    private void OnAgentTypeChanged(int index)
+    {
+        string selectedType = AgentTypeDropdown.options[index].text;
+        SimulationEvents.OnRequestChangeAgentType?.Invoke(CurrentAgentIndex, selectedType);
+    }
+
     private void OnAgentSelected(int index)
     {
         // If index is 0, treat as "No Agent" selected
+        CurrentAgentIndex = index;
         bool isAgentSelected = index > 0;
         SetAgentButtonsInteractable(isAgentSelected);
     }
@@ -70,5 +88,7 @@ public class SimulationEvent : MonoBehaviour
     private void SetAgentButtonsInteractable(bool state)
     {
         KillAgentButton.interactable = state;
+        ViewAgentButton.interactable = state;
+        AgentTypeDropdown.interactable = state;
     }
 }

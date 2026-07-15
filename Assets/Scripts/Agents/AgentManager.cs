@@ -22,4 +22,17 @@ public class AgentManager : MonoBehaviour
         Destroy(agent.gameObject);
         OnAgentListChanged?.Invoke();
     }
+
+    private void OnEnable() => SimulationEvents.OnRequestChangeAgentType += ModifyAgent;
+    private void OnDisable() => SimulationEvents.OnRequestChangeAgentType -= ModifyAgent;
+
+    private void ModifyAgent(int agentIndex, string newType)
+    {
+        // 1. Safety check
+        if (agentIndex >= 0 && agentIndex < activeAgents.Count)
+        {
+            // 2. Access the agent and change it
+            activeAgents[agentIndex].SetAgentType(newType);
+        }
+    }
 }

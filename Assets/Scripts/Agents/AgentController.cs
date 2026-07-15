@@ -4,13 +4,11 @@ using UnityEngine;
 
 public class AgentController : MonoBehaviour
 {
-    void Start()
-    {
-        
-    }
+    public string agentType;
 
-    void Update()
+    public void SetAgentType(string newType)
     {
-        
+        agentType = newType;
+        Debug.Log($"Agent {name} is now a {agentType}");
     }
 }
