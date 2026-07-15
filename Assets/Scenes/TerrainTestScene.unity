@@ -266,8 +266,11 @@ MonoBehaviour:
   riverMeanderFrequency: 0.1
   riverMaxMeanderAmplitude: 12
   riverTileThickness: 3
+  pondCount: 5
+  maxPondRadius: 2
   riverRotationOffsetSteps: 1
   minBridgeSpacing: 3
+  forcedBridgeInterval: 12
   tilePack:
     grassCenter: {fileID: 919132149155446097, guid: 0b3dbf4c7d4904e4dbf68fe00e127910, type: 3}
     waterCenter:
@@ -275,15 +278,15 @@ MonoBehaviour:
       density: 0
       yOffset: 0
     ground_riverSide:
-      prefab: {fileID: 919132149155446097, guid: 1729c5713c7f88c41a4bd78e58db1b2f, type: 3}
+      prefab: {fileID: 919132149155446097, guid: a43dfbe503cd6bb4c8cab5fcb66d2506, type: 3}
       density: 0.01
       yOffset: 1
     ground_riverCorner:
-      prefab: {fileID: 919132149155446097, guid: ee657b26adc71a04292a1a900cfcfcd5, type: 3}
+      prefab: {fileID: 919132149155446097, guid: a43dfbe503cd6bb4c8cab5fcb66d2506, type: 3}
       density: 0.01
       yOffset: 1
     ground_riverSideOpen:
-      prefab: {fileID: 919132149155446097, guid: 1729c5713c7f88c41a4bd78e58db1b2f, type: 3}
+      prefab: {fileID: 919132149155446097, guid: a43dfbe503cd6bb4c8cab5fcb66d2506, type: 3}
       density: 0.01
       yOffset: 1
     fence:
