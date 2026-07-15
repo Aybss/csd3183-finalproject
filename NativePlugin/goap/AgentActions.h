@@ -4,7 +4,8 @@
 // Each action models one step an agent can take in the city environment.
 
 #pragma once
-#include "Action.h"
+#include "goap/Action.h"           
+#include "core/AgentProfile.h"     
 
 // Walk along a known path to the destination.
 // Requires a path to already be established (has_path = true).
