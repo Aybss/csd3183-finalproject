@@ -21,10 +21,9 @@ public class PaletteUI : MonoBehaviour
             return;
         }
 
-        // Keep both the "X" Delete Mode button and the "S" Select Mode button
         foreach (Transform child in contentParent)
         {
-            if (child.name != "DeleteModeButton" && child.name != "SelectModeButton")
+            if (child.name != "DeleteModeButton" && child.name != "SelectModeButton" && child.name != "PanModeButton")
             {
                 Destroy(child.gameObject);
             }
@@ -67,6 +66,8 @@ public class PaletteUI : MonoBehaviour
                 if (interactionManager != null)
                 {
                     interactionManager.SetSelectedProp(currentEntry);
+                    interactionManager.SetPanMode(false);
+                    FindObjectOfType<CameraController>()?.TogglePanMode(false);
                 }
             });
         }

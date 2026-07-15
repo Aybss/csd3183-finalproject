@@ -11,6 +11,7 @@ public class GridInteractionManager : MonoBehaviour
 
     private Camera _cam;
     private bool _isDeleteMode = false;
+    private bool _isPanMode = false;
     private PropEntry _selectedProp = null;
     private GameObject _ghostInstance = null;
     private float _pivotToBottomOffset = 0f;
@@ -32,7 +33,7 @@ public class GridInteractionManager : MonoBehaviour
 
         if (Input.GetMouseButtonDown(0))
         {
-            if (!EventSystem.current.IsPointerOverGameObject())
+            if (!EventSystem.current.IsPointerOverGameObject() && !_isPanMode)
             {
                 if (_isDeleteMode)
                 {
@@ -54,35 +55,47 @@ public class GridInteractionManager : MonoBehaviour
     private void HandleHoverVisuals()
     {
         Ray ray = _cam.ScreenPointToRay(Input.mousePosition);
+        Vector3 interactionPoint;
+
+        Plane groundPlane = new Plane(Vector3.up, ObstacleGrid.Instance.originWorldPos);
+        bool hitPlane = groundPlane.Raycast(ray, out float enterDistance);
+        Vector3 planePoint = hitPlane ? ray.GetPoint(enterDistance) : Vector3.zero;
 
         if (Physics.Raycast(ray, out RaycastHit hit, 500f, groundMask))
         {
-            Vector2Int hoveredCell = ObstacleGrid.Instance.WorldToCell(hit.point);
+            interactionPoint = hit.point;
+        }
+        else if (hitPlane)
+        {
+            interactionPoint = planePoint;
+        }
+        else
+        {
+            ClearGhostInstance();
+            if (GridVisualizer.Instance != null) GridVisualizer.Instance.ClearPreview();
+            return;
+        }
 
-            if (_isDeleteMode)
-            {
-                ClearGhostInstance();
-                if (GridVisualizer.Instance != null)
-                {
-                    GridVisualizer.Instance.UpdatePreview(hoveredCell, Vector2Int.one, false);
-                }
-            }
-            else if (_selectedProp != null)
-            {
-                bool canPlace = ObstacleGrid.Instance.CanPlaceProp(hoveredCell, _selectedProp.footprintSize);
+        Vector2Int hoveredCell = ObstacleGrid.Instance.WorldToCell(interactionPoint);
 
-                if (GridVisualizer.Instance != null)
-                {
-                    GridVisualizer.Instance.UpdatePreview(hoveredCell, _selectedProp.footprintSize, canPlace);
-                }
-
-                UpdateGhostPosition(hoveredCell, hit.point);
-            }
-            else
+        if (_isDeleteMode)
+        {
+            ClearGhostInstance();
+            if (GridVisualizer.Instance != null)
             {
-                ClearGhostInstance();
-                if (GridVisualizer.Instance != null) GridVisualizer.Instance.ClearPreview();
+                GridVisualizer.Instance.UpdatePreview(hoveredCell, Vector2Int.one, false);
             }
+        }
+        else if (_selectedProp != null)
+        {
+            bool canPlace = ObstacleGrid.Instance.CanPlaceProp(hoveredCell, _selectedProp.footprintSize);
+
+            if (GridVisualizer.Instance != null)
+            {
+                GridVisualizer.Instance.UpdatePreview(hoveredCell, _selectedProp.footprintSize, canPlace);
+            }
+
+            UpdateGhostPosition(hoveredCell, interactionPoint);
         }
         else
         {
@@ -91,12 +104,21 @@ public class GridInteractionManager : MonoBehaviour
         }
     }
 
-    /// <summary>
-    /// Call this from your new UI "S" Button OnClick() event.
-    /// Clears both placement selection and delete mode.
-    /// </summary>
+    public void SetPanMode(bool active)
+    {
+        _isPanMode = active;
+        if (_isPanMode)
+        {
+            _isDeleteMode = false;
+            _selectedProp = null;
+            ClearGhostInstance();
+            if (GridVisualizer.Instance != null) GridVisualizer.Instance.ClearPreview();
+        }
+    }
+
     public void EnableSelectMode()
     {
+        _isPanMode = false;
         _isDeleteMode = false;
         _selectedProp = null;
         ClearGhostInstance();
@@ -114,9 +136,12 @@ public class GridInteractionManager : MonoBehaviour
         }
 
         Ray ray = _cam.ScreenPointToRay(Input.mousePosition);
-        if (Physics.Raycast(ray, out RaycastHit hit, 500f, groundMask))
+        Plane groundPlane = new Plane(Vector3.up, ObstacleGrid.Instance.originWorldPos);
+
+        if (groundPlane.Raycast(ray, out float enterDistance))
         {
-            Vector2Int hoveredCell = ObstacleGrid.Instance.WorldToCell(hit.point);
+            Vector3 targetPoint = ray.GetPoint(enterDistance);
+            Vector2Int hoveredCell = ObstacleGrid.Instance.WorldToCell(targetPoint);
 
             if (ObstacleGrid.Instance.IsInBounds(hoveredCell) && ObstacleGrid.Instance.IsCellOccupied(hoveredCell))
             {
@@ -140,6 +165,7 @@ public class GridInteractionManager : MonoBehaviour
 
     public void SetSelectedProp(PropEntry entry)
     {
+        _isPanMode = false;
         _isDeleteMode = false;
         _selectedProp = entry;
         _currentRotationAngle = 0f;
@@ -156,6 +182,7 @@ public class GridInteractionManager : MonoBehaviour
 
     public void EnableDeleteMode()
     {
+        _isPanMode = false;
         _isDeleteMode = true;
         _selectedProp = null;
         ClearGhostInstance();
@@ -181,10 +208,12 @@ public class GridInteractionManager : MonoBehaviour
     private void ProcessPlacementInput()
     {
         Ray ray = _cam.ScreenPointToRay(Input.mousePosition);
+        Plane groundPlane = new Plane(Vector3.up, ObstacleGrid.Instance.originWorldPos);
 
-        if (Physics.Raycast(ray, out RaycastHit hit, 500f, groundMask))
+        if (groundPlane.Raycast(ray, out float enterDistance))
         {
-            Vector2Int cell = ObstacleGrid.Instance.WorldToCell(hit.point);
+            Vector3 hitPoint = ray.GetPoint(enterDistance);
+            Vector2Int cell = ObstacleGrid.Instance.WorldToCell(hitPoint);
 
             if (ObstacleGrid.Instance.CanPlaceProp(cell, _selectedProp.footprintSize))
             {
@@ -199,19 +228,12 @@ public class GridInteractionManager : MonoBehaviour
     private void ProcessDeletionInput()
     {
         Ray ray = _cam.ScreenPointToRay(Input.mousePosition);
+        Plane groundPlane = new Plane(Vector3.up, ObstacleGrid.Instance.originWorldPos);
 
-        if (Physics.Raycast(ray, out RaycastHit hit, 500f, groundMask))
+        if (groundPlane.Raycast(ray, out float enterDistance))
         {
-            ExecuteDeletionAtWorldPosition(hit.point);
-        }
-        else
-        {
-            Plane groundPlane = new Plane(Vector3.up, ObstacleGrid.Instance.originWorldPos);
-            if (groundPlane.Raycast(ray, out float enterDistance))
-            {
-                Vector3 intersectionPoint = ray.GetPoint(enterDistance);
-                ExecuteDeletionAtWorldPosition(intersectionPoint);
-            }
+            Vector3 intersectionPoint = ray.GetPoint(enterDistance);
+            ExecuteDeletionAtWorldPosition(intersectionPoint);
         }
     }
 
