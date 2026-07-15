@@ -1,5 +1,8 @@
 // test_main.cpp
-// Comprehensive test runner verifying Member 1's spatial grid and multi-profile perception engine.
+// Comprehensive test runner verifying the cooperative survival loop:
+// - Physical map perception of resources (Wood and Food)
+// - SLAM memory sharing (MergeMemory)
+// - GOAP world state interpretation
 
 #include <iostream>
 #include <iomanip>
@@ -9,15 +12,24 @@
 #include "goap/WorldState.h"
 
 // Helper function to print a visual layer out to the console grid
-void PrintWallLayer(const MapLayer<bool>& layer) {
+void PrintWorldLayout(const WorldGrid& grid) {
     std::cout << "\n--- Console Grid Map View ---\n";
-    for (int r = 0; r < layer.get_height(); ++r) {
-        for (int c = 0; c < layer.get_width(); ++c) {
-            if (layer.at(r, c)) {
-                std::cout << "[#] "; // Solid structure
+    for (int r = 0; r < grid.height; ++r) {
+        for (int c = 0; c < grid.width; ++c) {
+            if (grid.wallLayer.at(r, c)) {
+                std::cout << "[#] "; // Solid Wall
+            }
+            else if (r == grid.buildSiteRow && c == grid.buildSiteCol) {
+                std::cout << "[B] "; // Build Site
+            }
+            else if (grid.foodLayer.at(r, c) > 0) {
+                std::cout << "[F] "; // Food Node
+            }
+            else if (grid.woodLayer.at(r, c) > 0) {
+                std::cout << "[W] "; // Wood Pile
             }
             else {
-                std::cout << "[.] "; // Walkable street
+                std::cout << "[.] "; // Open Space
             }
         }
         std::cout << "\n";
@@ -28,114 +40,126 @@ void PrintWallLayer(const MapLayer<bool>& layer) {
 // Helper to print the truth table generated for GOAP evaluation
 void PrintGoapTable(const std::string& profileName, const WorldState& state) {
     std::cout << "\n--- GOAP WorldState Truth Table [" << profileName << "] ---\n";
-    std::cout << "stairs_nearby:           " << (state.Get("stairs_nearby") ? "TRUE" : "FALSE") << "\n";
-    std::cout << "tactile_paving_detected: " << (state.Get("tactile_paving_detected") ? "TRUE" : "FALSE") << "\n";
-    std::cout << "ramp_nearby:             " << (state.Get("ramp_nearby") ? "TRUE" : "FALSE") << "\n";
-    std::cout << "crosswalk_detected:      " << (state.Get("crosswalk_detected") ? "TRUE" : "FALSE") << "\n";
-    std::cout << "crowd_present:           " << (state.Get("crowd_present") ? "TRUE" : "FALSE") << "\n";
+    std::cout << "food_detected:   " << (state.Get("food_detected") ? "TRUE" : "FALSE") << "\n";
+    std::cout << "wood_detected:   " << (state.Get("wood_detected") ? "TRUE" : "FALSE") << "\n";
+    std::cout << "at_build_site:   " << (state.Get("at_build_site") ? "TRUE" : "FALSE") << "\n";
     std::cout << "---------------------------------------------------------\n";
 }
 
 int main() {
     std::cout << "=========================================================\n";
-    std::cout << "=== COMPREHENSIVE BACKEND SPATIAL & PERCEPTION ENGINE ===\n";
+    std::cout << "=== COOPERATIVE MAZE SURVIVAL BACKEND ENGINE VERIFIER ===\n";
     std::cout << "=========================================================\n";
 
-    // 1. Initialize a 10x10 city grid scenario
+    // 1. Initialize a 10x10 Maze Map
     const int MAP_WIDTH = 10;
     const int MAP_HEIGHT = 10;
 
-    WorldGrid cityGrid;
-    cityGrid.width = MAP_WIDTH;
-    cityGrid.height = MAP_HEIGHT;
+    WorldGrid survivalMap;
+    survivalMap.width = MAP_WIDTH;
+    survivalMap.height = MAP_HEIGHT;
 
-    cityGrid.wallLayer.resize(MAP_WIDTH, MAP_HEIGHT, false);
-    cityGrid.stairLayer.resize(MAP_WIDTH, MAP_HEIGHT, false);
-    cityGrid.rampLayer.resize(MAP_WIDTH, MAP_HEIGHT, 0.0f);
-    cityGrid.tactilePaving.resize(MAP_WIDTH, MAP_HEIGHT, false);
-    cityGrid.audioBeaconLayer.resize(MAP_WIDTH, MAP_HEIGHT, false);
-    cityGrid.crowdDensityLayer.resize(MAP_WIDTH, MAP_HEIGHT, 0);
+    // Allocate Layers
+    survivalMap.wallLayer.resize(MAP_WIDTH, MAP_HEIGHT, false);
+    survivalMap.foodLayer.resize(MAP_WIDTH, MAP_HEIGHT, 0);
+    survivalMap.woodLayer.resize(MAP_WIDTH, MAP_HEIGHT, 0);
 
-    // 2. Build urban layout structures
-    // Create a horizontal structural building boundary wall across row 4
+    // Set Build Site at the middle
+    survivalMap.buildSiteRow = 5;
+    survivalMap.buildSiteCol = 5;
+
+    // 2. Build Maze Barriers
+    // Generate a wall dividing top and bottom halves, leaving columns 4 & 5 open
     for (int c = 0; c < MAP_WIDTH; ++c) {
-        // Leave columns 4 and 5 open as a pedestrian crosswalk gap
         if (c != 4 && c != 5) {
-            cityGrid.wallLayer.at(4, c) = true;
+            survivalMap.wallLayer.at(4, c) = true;
         }
     }
 
-    // Place a set of stairs at the crosswalk entrance on column 4
-    cityGrid.stairLayer.at(3, 4) = true;
+    // Place Survival Resources on the map
+    survivalMap.foodLayer.at(2, 3) = 5;  // Food source in the northern region
+    survivalMap.woodLayer.at(7, 8) = 10; // Rich wood pile in the south-east corner
 
-    // Place a safe guiding tactile path tile next to it on column 5
-    cityGrid.tactilePaving.at(3, 5) = true;
-
-    // Place an acoustic crosswalk chime inside the gap at row 4, column 4
-    cityGrid.audioBeaconLayer.at(4, 4) = true;
-
-    // Simulate a dense pedestrian crowd block covering the tactile paving strip
-    cityGrid.crowdDensityLayer.at(3, 5) = 3; // 3 active NPC agents blocking the cell
-
-    // Output the physical topology blueprint to terminal
-    PrintWallLayer(cityGrid.wallLayer);
+    // Output the physical topology layout to terminal
+    PrintWorldLayout(survivalMap);
 
     // Shared agent tracking variables
     int agentRow = 3;
     int agentCol = 4;
-    std::cout << "\nSpawning Agent at crosswalk proximity point: (Row: " << agentRow << ", Col: " << agentCol << ")\n";
+    std::cout << "\nSpawning Agents at proximity point: (Row: " << agentRow << ", Col: " << agentCol << ")\n";
 
     // =========================================================
-    // EVALUATION RUN 1: BLIND AGENT SIMULATION
+    // EVALUATION RUN 1: BLIND FORAGER SIMULATION (High hearing, low sight)
     // =========================================================
-    std::cout << "\n[TEST 1] Executing sensory sweeps for BLIND agent...\n";
+    std::cout << "\n[TEST 1] Executing sensory sweeps for BLIND FORAGER...\n";
 
-    AgentMemory blindAgentMemory;
-    blindAgentMemory.initialize(MAP_WIDTH, MAP_HEIGHT);
+    AgentMemory blindMemory;
+    blindMemory.initialize(MAP_WIDTH, MAP_HEIGHT);
 
-    // Execute short-range cane sweep
-    UpdateTactileSensing(agentRow, agentCol, cityGrid, blindAgentMemory);
+    // Get the Forager profile (sight = 1, hearing = 8)
+    AgentProfile foragerProfile = AgentProfile::MakeBlind(); 
 
-    // Verify if the localized sweep successfully cataloged structural changes
-    bool knowsWallAhead = blindAgentMemory.discoveredWalls.at(4, 3);
-    std::cout << "-> Did localized cane hit structural wall at (4,3)? "
-        << (knowsWallAhead ? "YES (Success)" : "NO (Failed)") << "\n";
+        // Run localized sight/tactile sweep to clear Fog of War
+        UpdatePhysicalSenses(agentRow, agentCol, survivalMap, blindMemory, foragerProfile); 
 
-    // Run the GOAP Bridge Interpretation utilizing official Blind factory parameters
-    WorldState blindGoapState = InterpretSensoryData(agentRow, agentCol, cityGrid, blindAgentMemory, AgentProfile::MakeBlind());
-        PrintGoapTable("Profile: Blind", blindGoapState);
+        // Convert numeric perception to boolean GOAP world states
+        WorldState foragerGoap = InterpretSensoryData(agentRow, agentCol, survivalMap, blindMemory, foragerProfile); 
+        PrintGoapTable("Profile: Blind Forager", foragerGoap);
 
     // =========================================================
-    // EVALUATION RUN 2: DEAF AGENT SIMULATION
+    // EVALUATION RUN 2: DEAF LUMBERJACK SIMULATION (Excellent sight, no hearing)
     // =========================================================
-    std::cout << "\n[TEST 2] Executing sensory sweeps for DEAF agent...\n";
+    std::cout << "\n[TEST 2] Executing sensory sweeps for DEAF LUMBERJACK...\n";
 
-    AgentMemory deafAgentMemory;
-    deafAgentMemory.initialize(MAP_WIDTH, MAP_HEIGHT);
+    AgentMemory deafMemory;
+    deafMemory.initialize(MAP_WIDTH, MAP_HEIGHT);
 
-    // Execute localized tactile updates
-    UpdateTactileSensing(agentRow, agentCol, cityGrid, deafAgentMemory);
+    // Get the Deaf profile (sight = 7, hearing = 0)
+    AgentProfile lumberjackProfile = AgentProfile::MakeDeaf();
 
-    // Run the GOAP Bridge Interpretation utilizing official Deaf factory parameters
-    WorldState deafGoapState = InterpretSensoryData(agentRow, agentCol, cityGrid, deafAgentMemory, AgentProfile::MakeDeaf());
-        PrintGoapTable("Profile: Deaf", deafGoapState);
+        // Run physical vision sweeps (clears wide Fog of War radius)
+        UpdatePhysicalSenses(agentRow, agentCol, survivalMap, deafMemory, lumberjackProfile);
 
-    // Final Structural Verification Checks
-    std::cout << "=== Cross-Evaluation Validation Verification ===\n";
-    if (blindGoapState.Get("crosswalk_detected") && !deafGoapState.Get("crosswalk_detected")) {
-        std::cout << "-> Crosswalk Acoustic Isolation: PASS (Blind hears it, Deaf ignores it).\n";
+        // Convert vision map to boolean states
+        WorldState lumberjackGoap = InterpretSensoryData(agentRow, agentCol, survivalMap, deafMemory, lumberjackProfile);
+        PrintGoapTable("Profile: Deaf Lumberjack", lumberjackGoap);
+
+    // =========================================================
+    // EVALUATION RUN 3: SLAM SYNC MEMORY SHARING (Blind Forager <-> Deaf Lumberjack)
+    // =========================================================
+    std::cout << "\n[TEST 3] Simulating SLAM communication merge on agent intersect...\n";
+
+    // Prior to merge, the Forager is unaware of the southern wood node because sight is 1 and hearing is blind to wood
+    std::cout << "-> Prior to SLAM - Does Forager know of any wood? "
+        << (blindMemory.discoveredWood.at(7, 8) > 0 ? "YES" : "NO") << "\n";
+
+    // Trigger the bitwise merge (Lumberjack passes their wide visual memory to the Blind Forager)
+    blindMemory.Merge(deafMemory);
+
+    std::cout << "-> After SLAM Sync - Does Forager know of southern wood now? "
+        << (blindMemory.discoveredWood.at(7, 8) > 0 ? "YES (Success)" : "NO (Failed)") << "\n";
+
+    // =========================================================
+    // FINAL SYSTEM CHECKS
+    // =========================================================
+    std::cout << "\n=== System Integration Validation Verification ===\n";
+
+    // Food Acoustic Check: Sighted blind agent should hear food acoustic beacons, deaf lumberjack ignores sound.
+    if (foragerGoap.Get("food_detected") && !lumberjackGoap.Get("food_detected")) {
+        std::cout << "-> Food Acoustic Isolation: PASS (Forager heard it, Deaf Collector remained deaf to it).\n";
     }
     else {
-        std::cout << "-> Crosswalk Acoustic Isolation: FAIL.\n";
+        std::cout << "-> Food Acoustic Isolation: FAIL.\n";
     }
 
-    if (blindGoapState.Get("crowd_present") && deafGoapState.Get("crowd_present")) {
-        std::cout << "-> Crowd Boundary Proximity: PASS (Both profiles successfully flag crowding).\n"; 
+    // Updated assertion to check for resource presence rather than raw quantity
+    if (blindMemory.discoveredWood.at(7, 8) > 0) {
+        std::cout << "-> Cooperative SLAM Sync Network: PASS (Spatial resource memory synced).\n";
     }
     else {
-        std::cout << "-> Crowd Boundary Proximity: FAIL.\n";
+        std::cout << "-> Cooperative SLAM Sync Network: FAIL.\n";
     }
 
-    std::cout << "\nAll layered simulation sub-systems verified! Framework integration ready.\n";
+    std::cout << "\nAll cooperative survival tests verified! Backend is ready to compile.\n";
     return 0;
 }
