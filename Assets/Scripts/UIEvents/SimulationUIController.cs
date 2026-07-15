@@ -5,10 +5,17 @@ using TMPro;    // TMP_Dropdown
 
 public class SimulationEvent : MonoBehaviour
 {
+    // Map Operations
+    [SerializeField] private Button RandomMapButton;
+    [SerializeField] private Button LoadMapButton;
+    [SerializeField] private Button OpenMapEditorButton;
+
     // General Simulation Settings
     [SerializeField] private Slider SimulationSpeedSlider;
     [SerializeField] private Toggle DebugDrawingToggle;
     [SerializeField] private Toggle MapAlignmentToggle;
+    [SerializeField] private Button PauseButton;
+    [SerializeField] private Button RestartButton;
 
     // Agent Interactions
     [SerializeField] private TMP_Dropdown AgentSelectDropdown;
@@ -38,6 +45,24 @@ public class SimulationEvent : MonoBehaviour
         AgentManager.OnAgentListChanged += RefreshDropdown;
         AgentSelectDropdown.onValueChanged.AddListener(OnAgentSelected);
 
+        // Map operation events ------------------------------------------------------//
+        // ---------------------------------------------------------------------------//
+
+        // Create new random map
+        RandomMapButton.onClick.AddListener(() => {
+            SimulationEvents.OnNewRandomMap?.Invoke();
+        });
+
+        // Load Map from file
+        LoadMapButton.onClick.AddListener(() => {
+            SimulationEvents.OnLoadMap?.Invoke();
+        });
+
+        OpenMapEditorButton.onClick.AddListener(() => {
+            SimulationEvents.OnOpenMapEditorButton?.Invoke();
+        });
+        
+
         // Broadcast simulation events -----------------------------------------------//
         // ---------------------------------------------------------------------------//
 
@@ -54,6 +79,16 @@ public class SimulationEvent : MonoBehaviour
         // Toggle agent map alignment
         MapAlignmentToggle.onValueChanged.AddListener(state => {
             SimulationEvents.OnMapAlignmentToggled?.Invoke(state);
+        });
+
+        // Pause simulation
+        PauseButton.onClick.AddListener(() => {
+            SimulationEvents.OnPause?.Invoke();
+        });
+
+        // Restart simulation
+        RestartButton.onClick.AddListener(() => {
+            SimulationEvents.OnRestart?.Invoke();
         });
     }
 

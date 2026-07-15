@@ -3161,9 +3161,14 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 568bd580b15cea24ba38fdd5242205db, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  RandomMapButton: {fileID: 7373478122369105608}
+  LoadMapButton: {fileID: 3381576885826633986}
+  OpenMapEditorButton: {fileID: 869668020682266529}
   SimulationSpeedSlider: {fileID: 3755102302438794355}
   DebugDrawingToggle: {fileID: 2010019782323608235}
   MapAlignmentToggle: {fileID: 3128629938772346353}
+  PauseButton: {fileID: 2999413628461063144}
+  RestartButton: {fileID: 1870603704532272623}
   AgentSelectDropdown: {fileID: 6971309242085770391}
   CreateAgentButton: {fileID: 193521486380143575}
   ViewAgentButton: {fileID: 5103675380828866725}
