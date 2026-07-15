@@ -30,7 +30,7 @@
 [Rr]elease/
 x64/
 x86/
-*.obj
+# *.obj 
 *.exe
 *.dll
 *.pdb
