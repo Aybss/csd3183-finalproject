@@ -24,11 +24,17 @@ public static class NativeBridge
 
     // --- Per-agent perception ("disabilities") ---
 
-    [DllImport(DLL_NAME, CallingConvention = CallingConvention.Cdecl)]
-    private static extern int CreateAgent(int visionRange, int canHear);
+    [DllImport(DLL_NAME, EntryPoint = "CreateAgent", CallingConvention = CallingConvention.Cdecl)]
+    public static extern int CreateAgentNative(int role);
 
     [DllImport(DLL_NAME, EntryPoint = "DestroyAgent", CallingConvention = CallingConvention.Cdecl)]
     private static extern void DestroyAgentNative(int agentHandle);
+
+    [DllImport(DLL_NAME, EntryPoint = "IsAgentCellUnknown", CallingConvention = CallingConvention.Cdecl)]
+    private static extern int IsAgentCellUnknownNative(int agentHandle, int x, int y);
+
+    [DllImport(DLL_NAME, EntryPoint = "SetCellType", CallingConvention = CallingConvention.Cdecl)]
+    private static extern void SetCellTypeNative(int x, int y, int cellType);
 
     [DllImport(DLL_NAME, EntryPoint = "UpdateAgentVision", CallingConvention = CallingConvention.Cdecl)]
     private static extern void UpdateAgentVisionNative(int agentHandle, int x, int y);
@@ -53,6 +59,12 @@ public static class NativeBridge
     public static void SetBlocked(int x, int y, bool blocked)
     {
         SetCellBlocked(x, y, blocked ? 1 : 0);
+    }
+
+    /// <summary>Sets a custom environmental cell type.</summary>
+    public static void SetCellType(int x, int y, int cellType)
+    {
+        SetCellTypeNative(x, y, cellType);
     }
 
     /// <summary>Loads a full occupancy grid at once.</summary>
@@ -84,9 +96,9 @@ public static class NativeBridge
     }
 
     /// <summary>Creates a new agent with its own sensory traits.</summary>
-    public static int CreateAgent(int visionRange, bool canHear)
+    public static int CreateAgent(int role)
     {
-        return CreateAgent(visionRange, canHear ? 1 : 0);
+        return CreateAgentNative(role);
     }
 
     /// <summary>Destroys an agent by its handle and frees up memory.</summary>
@@ -94,6 +106,13 @@ public static class NativeBridge
     {
         if (agentHandle < 0) return;
         DestroyAgentNative(agentHandle);
+    }
+
+    /// <summary>Check if the cell is unknown to the agent.</summary>
+    public static bool IsAgentCellUnknown(int agentHandle, int x, int y)
+    {
+        if (agentHandle < 0) return false;
+        return IsAgentCellUnknownNative(agentHandle, x, y) != 0;
     }
 
     /// <summary>Reveals the world around (x, y) to the given agent.</summary>

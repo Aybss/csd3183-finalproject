@@ -8,48 +8,15 @@ int Agent::Index(int x, int y) const
     return x + y * _world->GetWidth();
 }
 
-void Agent::Init(AStarGrid* world, const AgentPerception& perception)
+void Agent::Init(AStarGrid* world, AgentRole role)
 {
     _world = world;
-    _perception = perception;
-    _known.assign(static_cast<size_t>(world->GetWidth()) * world->GetHeight(), CellKnowledge::Unknown);
-
-    if (_perception.visionRange < 0)
-    {
-        // Fully sighted: the agent already "knows" the whole grid.
-        for (int y = 0; y < world->GetHeight(); y++)
-            for (int x = 0; x < world->GetWidth(); x++)
-                _known[Index(x, y)] = world->IsBlocked(x, y) ? CellKnowledge::Blocked : CellKnowledge::Free;
-    }
-}
-
-void Agent::UpdateVision(int x, int y)
-{
-    if (!_world) return;
-    if (_perception.visionRange < 0) return; // sighted agents already know everything
-
-    int range = _perception.visionRange;
-    for (int dy = -range; dy <= range; dy++)
-    {
-        for (int dx = -range; dx <= range; dx++)
-        {
-            int nx = x + dx;
-            int ny = y + dy;
-            if (!_world->IsInBounds(nx, ny)) continue;
-
-            // Circular radius so "vision range 1" reads as "the tile next
-            // to me", not a slightly-too-generous 3x3 square.
-            float dist = std::sqrt(static_cast<float>(dx * dx + dy * dy));
-            if (dist > static_cast<float>(range) + 0.001f) continue;
-
-            _known[Index(nx, ny)] = _world->IsBlocked(nx, ny) ? CellKnowledge::Blocked : CellKnowledge::Free;
-        }
-    }
+    _role = role;
 }
 
 float Agent::SoundPenaltyAt(int x, int y, const std::vector<SoundCue>& activeSounds) const
 {
-    if (!_perception.canHear) return 0.0f; // deaf: sound never influences pathing
+    if (_role == AgentRole::Deaf) return 0.0f; // Deaf: completely ignore sound cues
 
     float penalty = 0.0f;
     float fx = static_cast<float>(x);
@@ -99,11 +66,17 @@ std::vector<PathNode> Agent::FindPath(int startX, int startY, int endX, int endY
     int width = _world->GetWidth();
     int height = _world->GetHeight();
 
-    auto knownBlocked = [&](int x, int y) {
-        return _known[Index(x, y)] == CellKnowledge::Blocked;
+    // Lambda to check standard blockages and custom role obstacles
+    auto isBlocked = [&](int x, int y) {
+        if (_world->IsBlocked(x, y)) return true;
+
+        // WheelchairBound cannot traverse Stairs (represented by CellType 2)
+        if (_role == AgentRole::WheelchairBound && _world->GetCellType(x, y) == 2) return true;
+
+        return false;
         };
 
-    if (knownBlocked(startX, startY) || knownBlocked(endX, endY)) return result;
+    if (isBlocked(startX, startY) || isBlocked(endX, endY)) return result;
 
     int startIndex = Index(startX, startY);
     int endIndex = Index(endX, endY);
@@ -142,7 +115,7 @@ std::vector<PathNode> Agent::FindPath(int startX, int startY, int endX, int endY
             int ny = cy + dy[i];
 
             if (!_world->IsInBounds(nx, ny)) continue;
-            if (knownBlocked(nx, ny)) continue; // known-blocked only; unknown is passable
+            if (isBlocked(nx, ny)) continue;
 
             int nIndex = Index(nx, ny);
             if (closed[nIndex]) continue;
@@ -162,7 +135,7 @@ std::vector<PathNode> Agent::FindPath(int startX, int startY, int endX, int endY
     }
 
     if (startIndex != endIndex && cameFrom[endIndex] == -1)
-        return result; // no path found with current knowledge
+        return result;
 
     std::vector<int> indexPath;
     int walker = endIndex;

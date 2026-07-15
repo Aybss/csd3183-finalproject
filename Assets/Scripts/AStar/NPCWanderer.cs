@@ -1,4 +1,5 @@
 using System.Collections;
+using System.Collections.Generic;
 using UnityEngine;
 
 // Attach alongside AStarAgent on the same GameObject. Continuously
@@ -17,7 +18,9 @@ public class NPCWanderer : MonoBehaviour
     public float maxIdleSeconds = 5f;
 
     [Header("Wander")]
-    [Tooltip("How many random cells to try before giving up for this cycle (in case a pick lands on a blocked/unreachable cell).")]
+    [Tooltip("How many random positions to evaluate in a batch.")]
+    public int candidateBatchSize = 15;
+    [Tooltip("How many pathfinding attempts to make if the first choices are blocked.")]
     public int maxPickAttempts = 10;
 
     private AStarAgent _agent;
@@ -48,26 +51,63 @@ public class NPCWanderer : MonoBehaviour
         {
             Vector3[] path = null;
 
-            for (int attempt = 0; attempt < maxPickAttempts && (path == null || path.Length == 0); attempt++)
+            // 1. Gather a batch of random coordinates
+            List<Vector2Int> candidates = GatherCandidates();
+
+            // 2. Attempt to find a path to the best candidates first
+            for (int i = 0; i < candidates.Count && i < maxPickAttempts; i++)
             {
-                Vector3 target = PickRandomWorldPosition();
-                path = _agent.FindPathTo(target);
+                Vector3 targetWorld = GridToWorld(candidates[i]);
+                path = _agent.FindPathTo(targetWorld);
+
+                if (path != null && path.Length > 0)
+                {
+                    break; // Successfully found a path!
+                }
             }
 
+            // 3. Follow path or idle
             if (path != null && path.Length > 0)
+            {
                 yield return StartCoroutine(FollowPath(path));
-            // else: couldn't find a reachable random cell this cycle — just fall through to idle and try again next loop.
+            }
+            else
+            {
+                Debug.LogWarning($"[{name}] Wanderer could not find a reachable destination from candidate batch. Retrying...");
+            }
 
             float idleTime = Random.Range(minIdleSeconds, maxIdleSeconds);
             yield return new WaitForSeconds(idleTime);
         }
     }
 
-    private Vector3 PickRandomWorldPosition()
+    private List<Vector2Int> GatherCandidates()
     {
-        int x = Random.Range(0, _gridManager.gridWidth);
-        int y = Random.Range(0, _gridManager.gridHeight);
-        return _gridManager.originWorldPosition + new Vector3(x * _gridManager.cellSize, 0f, y * _gridManager.cellSize);
+        List<Vector2Int> candidates = new List<Vector2Int>();
+
+        for (int i = 0; i < candidateBatchSize; i++)
+        {
+            int x = Random.Range(0, _gridManager.gridWidth);
+            int y = Random.Range(0, _gridManager.gridHeight);
+            candidates.Add(new Vector2Int(x, y));
+        }
+
+        // Shuffle the list so we wander randomly
+        Shuffle(candidates);
+
+        return candidates;
+    }
+
+    private Vector3 GridToWorld(Vector2Int gridCoord)
+    {
+        return _gridManager.originWorldPosition
+               + new Vector3(gridCoord.x * _gridManager.cellSize, 0f, gridCoord.y * _gridManager.cellSize);
+    }
+
+    private Vector3 GridToWorld(Vector2Int gridCoord, float heightOffset = 0f)
+    {
+        return _gridManager.originWorldPosition
+               + new Vector3(gridCoord.x * _gridManager.cellSize, heightOffset, gridCoord.y * _gridManager.cellSize);
     }
 
     private IEnumerator FollowPath(Vector3[] path)
@@ -79,11 +119,17 @@ public class NPCWanderer : MonoBehaviour
                 transform.position = Vector3.MoveTowards(transform.position, waypoint, moveSpeed * Time.deltaTime);
                 yield return null;
             }
+        }
+    }
 
-            // No-op for sighted agents; lets blind agents "see" their new
-            // surroundings at each step so they can replan around anything
-            // they've just discovered.
-            _agent.UpdateVisionAtCurrentPosition();
+    private void Shuffle<T>(List<T> list)
+    {
+        for (int i = list.Count - 1; i > 0; i--)
+        {
+            int rnd = Random.Range(0, i + 1);
+            T temp = list[i];
+            list[i] = list[rnd];
+            list[rnd] = temp;
         }
     }
 }

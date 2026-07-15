@@ -18,6 +18,10 @@ public:
     // Marks a single cell as blocked/free.
     void SetBlocked(int x, int y, bool blocked);
 
+    // Sets/Gets a custom environmental cell type (e.g., 0 = Free, 1 = Blocked, 2 = Stairs)
+    void SetCellType(int x, int y, int cellType);
+    int GetCellType(int x, int y) const;
+
     // Bulk-loads an occupancy grid from a flat byte array
     // (0 = free, non-zero = blocked).
     void LoadFromBytes(const unsigned char* data, int length);
@@ -36,6 +40,7 @@ private:
     int _width = 0;
     int _height = 0;
     std::vector<bool> _blocked;
+    std::vector<int> _cellTypes; // Parallel vector tracking unique terrain types
 
     int Index(int x, int y) const { return x + y * _width; }
 };

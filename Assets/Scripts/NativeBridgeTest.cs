@@ -37,8 +37,8 @@ public class NativeBridgeTest : MonoBehaviour
 
     private void TestBlindAgent()
     {
-        Debug.Log("[Test] Creating a blind agent (visionRange = 1) at (0,0)...");
-        int blindHandle = NativeBridge.CreateAgent(visionRange: 1, canHear: true);
+        Debug.Log("[Test] Creating a blind agent (role = 1) at (0,0)...");
+        int blindHandle = NativeBridge.CreateAgent(1);
         NativeBridge.UpdateAgentVision(blindHandle, 0, 0);
 
         Debug.Log("[Test] Blind agent plans toward (9,0) without having seen the wall yet...");
@@ -72,8 +72,8 @@ public class NativeBridgeTest : MonoBehaviour
         Debug.Log("[Test] Adding a loud sound cue at (7,5)...");
         NativeBridge.AddSoundCue(7f, 5f, 2f, 50f);
 
-        int hearingHandle = NativeBridge.CreateAgent(visionRange: -1, canHear: true);
-        int deafHandle = NativeBridge.CreateAgent(visionRange: -1, canHear: false);
+        int hearingHandle = NativeBridge.CreateAgent(0);
+        int deafHandle = NativeBridge.CreateAgent(2);
 
         var hearingPath = NativeBridge.FindAgentPath(hearingHandle, 0, 5, 9, 5);
         var deafPath = NativeBridge.FindAgentPath(deafHandle, 0, 5, 9, 5);

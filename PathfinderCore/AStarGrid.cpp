@@ -7,20 +7,45 @@ void AStarGrid::Init(int width, int height)
 {
     _width = width;
     _height = height;
-    _blocked.assign(static_cast<size_t>(width) * height, false);
+
+    size_t size = static_cast<size_t>(width) * height;
+    _blocked.assign(size, false);
+    _cellTypes.assign(size, 0); // Default all cells to Type 0 (Free)
 }
 
 void AStarGrid::SetBlocked(int x, int y, bool blocked)
 {
     if (!IsInBounds(x, y)) return;
-    _blocked[Index(x, y)] = blocked;
+    int idx = Index(x, y);
+    _blocked[idx] = blocked;
+    _cellTypes[idx] = blocked ? 1 : 0; // Synchronize cell type
+}
+
+void AStarGrid::SetCellType(int x, int y, int cellType)
+{
+    if (!IsInBounds(x, y)) return;
+    int idx = Index(x, y);
+    _cellTypes[idx] = cellType;
+
+    // Automatically keep standard blockages in sync:
+    // CellType 1 is Blocked. CellType 0 (Free) and CellType 2 (Stairs) are unblocked.
+    _blocked[idx] = (cellType == 1);
+}
+
+int AStarGrid::GetCellType(int x, int y) const
+{
+    if (!IsInBounds(x, y)) return 1; // Out of bounds behaves as Blocked (Type 1)
+    return _cellTypes[Index(x, y)];
 }
 
 void AStarGrid::LoadFromBytes(const unsigned char* data, int length)
 {
     int count = std::min(length, static_cast<int>(_blocked.size()));
     for (int i = 0; i < count; i++)
+    {
         _blocked[i] = (data[i] != 0);
+        _cellTypes[i] = (data[i] != 0) ? 1 : 0;
+    }
 }
 
 bool AStarGrid::IsBlocked(int x, int y) const

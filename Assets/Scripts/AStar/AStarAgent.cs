@@ -1,9 +1,13 @@
 using UnityEngine;
 
-// Attach this to any GameObject that needs to path with its own
-// perception (sighted/blind, hearing/deaf) rather than full knowledge
-// of the grid. Requires an AStarGridManager already initialized
-// somewhere in the scene (see AStarGridManager.cs).
+public enum AgentRole
+{
+    WheelchairBound = 0,
+    Blind = 1,
+    Deaf = 2
+}
+
+[RequireComponent(typeof(Collider))]
 public class AStarAgent : MonoBehaviour
 {
     [Header("References")]
@@ -14,10 +18,9 @@ public class AStarAgent : MonoBehaviour
     [Tooltip("Optional LineRenderer component to visualize the path in-game.")]
     public LineRenderer pathLineRenderer;
 
-    [Header("Perception")]
-    [Tooltip("-1 = normal sight (knows the whole grid). 1 = blind (can only perceive the tile next to it). Higher values = short-sighted.")]
-    public int visionRange = -1;
-    public bool canHear = true;
+    [Header("Agent Physical Constraints")]
+    [Tooltip("Select the single role/disability that defines this agent's physical navigation capabilities.")]
+    public AgentRole role = AgentRole.WheelchairBound;
 
     private int _agentHandle = -1;
     private const int MAX_PATH_LENGTH = 512;
@@ -35,32 +38,12 @@ public class AStarAgent : MonoBehaviour
             return;
         }
 
-        // Create the C++ agent during Awake
-        _agentHandle = NativeBridge.CreateAgent(visionRange, canHear);
-        Debug.Log($"[{name}] Created C++ Agent with Handle: {_agentHandle}");
+        // Create the C++ agent with its exclusive role definition
+        _agentHandle = NativeBridge.CreateAgent((int)role);
+        Debug.Log($"[{name}] Created C++ Agent ({role}) with Handle: {_agentHandle}");
     }
 
-    void Start()
-    {
-        if (_agentHandle >= 0)
-        {
-            UpdateVisionAtCurrentPosition();
-        }
-    }
-
-    // Call this whenever the agent moves so a limited-vision agent
-    // learns about its new surroundings. Sighted agents (visionRange
-    // == -1) can skip calling this repeatedly — it's a no-op for them
-    // after Start().
-    public void UpdateVisionAtCurrentPosition()
-    {
-        if (_agentHandle < 0) return;
-        Vector2Int g = gridManager.WorldToGrid(transform.position);
-        NativeBridge.UpdateAgentVision(_agentHandle, g.x, g.y);
-    }
-
-    // Plans a path from the agent's current position to targetWorldPos,
-    // using only what this agent currently knows/perceives.
+    // Plans a path from the agent's current position to targetWorldPos using its role capabilities
     public Vector3[] FindPathTo(Vector3 targetWorldPos)
     {
         if (_agentHandle < 0)
@@ -118,7 +101,6 @@ public class AStarAgent : MonoBehaviour
         }
     }
 
-    // Option 2: Editor-Only Debugging lines
     private void OnDrawGizmos()
     {
         if (_lastCalculatedPath == null || _lastCalculatedPath.Length < 2) return;

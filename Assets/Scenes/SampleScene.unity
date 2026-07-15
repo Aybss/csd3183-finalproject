@@ -1129,7 +1129,7 @@ LineRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1286085816}
   m_Enabled: 1
-  m_CastShadows: 1
+  m_CastShadows: 0
   m_ReceiveShadows: 1
   m_DynamicOccludee: 1
   m_StaticShadowCaster: 0
@@ -1166,13 +1166,13 @@ LineRenderer:
   - {x: 0, y: 0, z: 0}
   m_Parameters:
     serializedVersion: 3
-    widthMultiplier: 1
+    widthMultiplier: 0.5
     widthCurve:
       serializedVersion: 2
       m_Curve:
       - serializedVersion: 3
-        time: 0
-        value: 1
+        time: 0.03319502
+        value: 0.5
         inSlope: 0
         outSlope: 0
         tangentMode: 0
@@ -1239,6 +1239,7 @@ MonoBehaviour:
   waypointReachedDistance: 0.05
   minIdleSeconds: 2
   maxIdleSeconds: 5
+  candidateBatchSize: 15
   maxPickAttempts: 10
 --- !u!114 &1286085819
 MonoBehaviour:
