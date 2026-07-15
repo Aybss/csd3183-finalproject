@@ -126,11 +126,20 @@ std::vector<PathNode> Agent::FindPath(int startX, int startY, int endX, int endY
     int width = _world->GetWidth();
     int height = _world->GetHeight();
 
-    auto knownBlocked = [&](int x, int y) {
-        return _known[Index(x, y)] == CellKnowledge::Blocked;
+    // Combined Obstacle Evaluator:
+    // Respects both memory-driven Fog of War AND specialized physical role restrictions.
+    auto isBlocked = [&](int x, int y) {
+        // 1. Fog of War Memory Check: If the agent knows the tile is blocked, it's blocked
+        if (_known[Index(x, y)] == CellKnowledge::Blocked) return true;
+
+        // 2. Physical Constraint Check: Wheelchair users cannot traverse Stairs (CellType 2)
+        if (_role == AgentRole::WheelchairBound && _world->GetCellType(x, y) == 2) return true;
+
+        return false;
         };
 
-    if (knownBlocked(startX, startY) || knownBlocked(endX, endY)) return result;
+    // Fail early if the start or target points are invalid/blocked
+    if (isBlocked(startX, startY) || isBlocked(endX, endY)) return result;
 
     int startIndex = Index(startX, startY);
     int endIndex = Index(endX, endY);
@@ -169,7 +178,7 @@ std::vector<PathNode> Agent::FindPath(int startX, int startY, int endX, int endY
             int ny = cy + dy[i];
 
             if (!_world->IsInBounds(nx, ny)) continue;
-            if (knownBlocked(nx, ny)) continue; // known-blocked only; unknown is passable
+            if (isBlocked(nx, ny)) continue; // Skip blocked memories & stair mismatches
 
             int nIndex = Index(nx, ny);
             if (closed[nIndex]) continue;
@@ -189,7 +198,7 @@ std::vector<PathNode> Agent::FindPath(int startX, int startY, int endX, int endY
     }
 
     if (startIndex != endIndex && cameFrom[endIndex] == -1)
-        return result; // no path found with current knowledge
+        return result; // No path found with current knowledge
 
     std::vector<int> indexPath;
     int walker = endIndex;

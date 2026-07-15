@@ -38,6 +38,14 @@ enum class CellKnowledge : unsigned char
     HasFood = 4    
 };
 
+enum class AgentRole : int
+{
+    WheelchairBound = 0,
+    Blind = 1,
+    Deaf = 2,
+    CognitiveDifficulty = 3 // Added to support our unified GOAP setup!
+};
+
 // Wraps a shared AStarGrid (the "ground truth" world) with one agent's
 // own partial knowledge of it plus its sensory traits, and plans paths
 // using only what that agent actually knows/perceives -- not the true
@@ -70,6 +78,8 @@ public:
 
     void MergeMemory(const Agent& otherAgent);
 
+    AgentRole GetRole() const { return _role; }
+
 private:
     AStarGrid* _world = nullptr;
     AgentPerception _perception;
@@ -77,4 +87,6 @@ private:
 
     int Index(int x, int y) const;
     float SoundPenaltyAt(int x, int y, const std::vector<SoundCue>& activeSounds) const;
+
+    AgentRole _role = AgentRole::WheelchairBound;
 };

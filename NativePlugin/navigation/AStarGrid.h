@@ -41,6 +41,10 @@ public:
     int GetWidth() const { return _width; }
     int GetHeight() const { return _height; }
 
+    // Sets/Gets a custom environmental cell type (e.g., 0 = Free, 1 = Blocked, 2 = Stairs)
+    void SetCellType(int x, int y, int cellType);
+    int GetCellType(int x, int y) const;
+
     // Finds a path from start to end (inclusive). Returns an empty
     // vector if no path exists or the inputs are invalid.
     std::vector<PathNode> FindPath(int startX, int startY, int endX, int endY);
@@ -53,6 +57,8 @@ private:
     // Resource layers tracking amounts
     std::vector<int> _wood;
     std::vector<int> _food;
+
+    std::vector<int> _cellTypes; // Parallel vector tracking unique terrain types
 
     int Index(int x, int y) const { return x + y * _width; }
 };

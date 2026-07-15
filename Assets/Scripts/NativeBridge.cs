@@ -7,7 +7,7 @@ using UnityEngine;
 /// </summary>
 public static class NativeBridge
 {
-    private const string DLL_NAME = "PathfinderCore";
+    private const string DLL_NAME = "CooperativeMazeSurvival";
 
     [DllImport(DLL_NAME, CallingConvention = CallingConvention.Cdecl)]
     private static extern int InitializeGrid(int width, int height);
