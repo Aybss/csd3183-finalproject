@@ -8,12 +8,12 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(PROJECT_SOURCES
     test_main.cpp
     api/PluginAPI.cpp
-    core/AgentProfile.h
     spatial/MapLayer.h
     spatial/WorldGrid.h
     spatial/AgentMemory.h
     spatial/Perception.h
     navigation/AStarPathfinder.h
+    navigation/AStarPathfinder.cpp
     goap/Action.h
     goap/AgentActions.h
     goap/GOAPPlanner.h

@@ -59,8 +59,8 @@ int main() {
     PrintWallLayer(cityGrid.wallLayer);
 
     // 3. Spawn a blind or visually impaired agent on row 2, col 5
-    int agentRow = 2;
-    int agentCol = 5;
+    int agentRow = 3;
+    int agentCol = 4;
     std::cout << "\nSpawning Agent at position: (Row: " << agentRow << ", Col: " << agentCol << ")\n";
 
     AgentMemory blindAgentMemory;
@@ -77,7 +77,7 @@ int main() {
 
     // 5. Test the GOAP Bridge Interpretation
     std::cout << "\nTranslating real physical coordinates into GOAP Symbolic Flags...\n";
-    WorldState goapInputState = InterpretSensoryData(agentRow, agentCol, cityGrid, blindAgentMemory);
+    WorldState goapInputState = InterpretSensoryData(agentRow, agentCol, cityGrid, blindAgentMemory, AgentProfile::MakeBlind());
 
     // Output the resulting flags that Member 3's GOAP Planner will evaluate
     std::cout << "\n--- Generated GOAP WorldState Truth Table ---\n";
