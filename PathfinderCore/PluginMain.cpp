@@ -3,6 +3,17 @@
 #include <vector>
 #include <memory>
 
+#pragma pack(push, 1) // Ensures alignment matches C# packing exactly
+struct SimpleNodeData
+{
+    int x;
+    int y;
+    bool isWalkable;
+    float movementCost;
+    int biomeType; // Matches C# BiomeType (0 = Grass, 1 = Water, 2 = Wood, 3 = Food)
+};
+#pragma pack(pop)
+
 static AStarGrid g_grid;
 static std::vector<std::unique_ptr<Agent>> g_agents;
 static std::vector<SoundCue> g_activeSounds;
@@ -13,6 +24,31 @@ extern "C" {
     {
         g_grid.Init(width, height);
         return 1;
+    }
+
+    // EXPOSED TO UNITY: Feeds the flat procedural data directly into your AStarGrid
+    __declspec(dllexport) void LoadTerrainGrid(SimpleNodeData* gridData, int width, int height)
+    {
+        if (!gridData) return;
+
+        // 1. Re-initialize AStarGrid bounds natively
+        g_grid.Init(width, height);
+
+        // 2. Iterate through the flat sequential memory and update cellular status
+        for (int y = 0; y < height; ++y)
+        {
+            for (int x = 0; x < width; ++x)
+            {
+                int index = (y * width) + x; // Row-major linear mapping
+                const SimpleNodeData& node = gridData[index];
+
+                // Synchronize blocking states with the A* navigation grid
+                g_grid.SetBlocked(x, y, !node.isWalkable);
+
+                // Map your customized cell types (biome type index)
+                g_grid.SetCellType(x, y, node.biomeType);
+            }
+        }
     }
 
     __declspec(dllexport) void SetCellBlocked(int x, int y, int blocked)
@@ -89,7 +125,8 @@ extern "C" {
     __declspec(dllexport) int FindAgentPath(int agentHandle, int startX, int startY, int endX, int endY,
         int* outX, int* outY, int maxPathLength)
     {
-        if (agentHandle < 0 || agentHandle >= static_cast<int>(g_agents.size()) || !g_agents[agentHandle]) return -1;
+        if (agentHandle < 0 || agentHandle >= static_cast<int>(g_agents.size())) return -1;
+        if (!g_agents[agentHandle]) return -1;
 
         std::vector<PathNode> path = g_agents[agentHandle]->FindPath(startX, startY, endX, endY, g_activeSounds);
 

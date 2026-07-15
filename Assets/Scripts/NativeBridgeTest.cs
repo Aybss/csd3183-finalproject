@@ -9,7 +9,7 @@ public class NativeBridgeTest : MonoBehaviour
 
         Debug.Log("[Test] Blocking a wall across column 5, rows 0-7 (leaving a gap at the top)...");
         for (int y = 0; y < 8; y++)
-            NativeBridge.SetBlocked(5, y, true);
+            NativeBridge.SetBlocked(5, y, 1);
 
         Debug.Log("[Test] Finding path from (0,0) to (9,9)...");
         var path = NativeBridge.FindPath(0, 0, 9, 9);

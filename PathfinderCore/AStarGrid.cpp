@@ -131,6 +131,16 @@ std::vector<PathNode> AStarGrid::FindPath(int startX, int startY, int endX, int 
 
             if (!IsInBounds(nx, ny) || IsBlocked(nx, ny)) continue;
 
+            // Prevent cutting across a diagonal gap between two blocked orthogonal
+            // cells (walking "through" a wall corner). Both flanking cells must be open.
+            bool isDiagonal = dx[i] != 0 && dy[i] != 0;
+            if (isDiagonal)
+            {
+                bool horizontalOpen = IsInBounds(cx + dx[i], cy) && !IsBlocked(cx + dx[i], cy);
+                bool verticalOpen = IsInBounds(cx, cy + dy[i]) && !IsBlocked(cx, cy + dy[i]);
+                if (!horizontalOpen || !verticalOpen) continue;
+            }
+
             int nIndex = Index(nx, ny);
             if (closed[nIndex]) continue;
 

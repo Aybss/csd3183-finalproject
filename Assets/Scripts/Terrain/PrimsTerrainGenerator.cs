@@ -1,15 +1,17 @@
 using System.Collections.Generic;
+using System.Runtime.InteropServices;
 using UnityEngine;
 
 namespace ProceduralTerrain
 {
     // --- LIGHTWEIGHT EXPORT STRUCT ---
+    [StructLayout(LayoutKind.Sequential, Pack = 1)]
     [System.Serializable]
     public struct SimpleNodeData
     {
         public int x;
         public int y;
-        public bool isWalkable;
+        [MarshalAs(UnmanagedType.I1)] public bool isWalkable;
         public float movementCost;
         public int biomeType;
     }
@@ -68,6 +70,9 @@ namespace ProceduralTerrain
             ClearActiveMap();
             GenerateNaturalPlains();
             ConstructVisualGrid();
+
+            // Generate the physical collider bounds of the map once built
+            CreateGlobalFloorCollider();
         }
 
         // RECONSTRUCT SCENE FROM JSON SCHEMA
@@ -95,6 +100,9 @@ namespace ProceduralTerrain
 
             // Rebuild Visual Layer
             ConstructVisualGrid(schema);
+
+            // Rebuild physical collider state
+            CreateGlobalFloorCollider();
         }
 
         private void ClearActiveMap()
@@ -160,6 +168,7 @@ namespace ProceduralTerrain
 
                 int riverCenterTargetX = Mathf.RoundToInt(gridCenterColumn + (normalizedDrift * riverMaxMeanderAmplitude));
 
+                // Generates exactly 'riverTileThickness' blocks adjacent to each other horizontally
                 for (int offset = 0; offset < riverTileThickness; offset++)
                 {
                     int targetX = riverCenterTargetX + offset;
@@ -238,6 +247,7 @@ namespace ProceduralTerrain
 
                         if (loadedSchema != null)
                         {
+                            // Rebuild saved visual props directly using saved indices
                             SerializableNodeData savedNode = loadedSchema.serializedNodes.Find(n => n.gridX == x && n.gridY == y);
                             if (savedNode != null && savedNode.objectTypeIndex != (int)PropObjectType.None)
                             {
@@ -410,18 +420,20 @@ namespace ProceduralTerrain
             return x >= 0 && x < width && y >= 0 && y < height;
         }
 
-        // --- EXPORT 2D ARRAY METHOD ---
-        public SimpleNodeData[,] ExportLightweight2DArray()
+        // --- EXPORT CONTIGUOUS 1D FLAT ARRAY FOR C++ ---
+        public SimpleNodeData[] ExportContiguousFlatArray()
         {
-            SimpleNodeData[,] dataMatrix = new SimpleNodeData[width, height];
+            int totalElements = width * height;
+            SimpleNodeData[] flatArray = new SimpleNodeData[totalElements];
 
-            for (int x = 0; x < width; x++)
+            for (int y = 0; y < height; y++)
             {
-                for (int y = 0; y < height; y++)
+                for (int x = 0; x < width; x++)
                 {
                     PathfindingNode sourceNode = grid[x, y];
+                    int index = (y * width) + x; // Row-major linear calculation
 
-                    dataMatrix[x, y] = new SimpleNodeData
+                    flatArray[index] = new SimpleNodeData
                     {
                         x = x,
                         y = y,
@@ -432,7 +444,29 @@ namespace ProceduralTerrain
                 }
             }
 
-            return dataMatrix;
+            return flatArray;
+        }
+
+        // --- GENERATES A GLOBAL PHYSICAL FLOOR ---
+        private void CreateGlobalFloorCollider()
+        {
+            BoxCollider floor = GetComponent<BoxCollider>();
+            if (floor == null)
+            {
+                floor = gameObject.AddComponent<BoxCollider>();
+            }
+
+            float physicalWidth = width * cellSize;
+            float physicalLength = height * cellSize;
+
+            // Make the collider cover the exact dimensions of the grid, 1 unit thick
+            floor.size = new Vector3(physicalWidth, 1f, physicalLength);
+
+            // Center the collider perfectly under the spawned tiles 
+            // (Tiles spawn from 0,0 upwards. Y is -0.5f so the top of the collider sits exactly at Y=0)
+            floor.center = new Vector3((physicalWidth / 2f) - (cellSize / 2f), -0.5f, (physicalLength / 2f) - (cellSize / 2f));
+
+            Debug.Log($"[TerrainGenerator] Created global BoxCollider ({physicalWidth}x{physicalLength}) for terrain physics!");
         }
     }
 }

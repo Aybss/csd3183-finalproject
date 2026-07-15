@@ -4,33 +4,6 @@ using UnityEngine;
 
 namespace ProceduralTerrain
 {
-    // Explicit asset catalog index to track exactly what prop is sitting on a tile
-    public enum PropObjectType
-    {
-        None = -1,
-        Path = 0,
-        TentA = 1,
-        TentB = 2,
-        StatueObelisk = 3,
-        LogStack = 4,
-        Bush = 5,
-        Mushroom = 6,
-        CropWheat = 7,
-        CropBerries = 8,
-        TreeLarge = 9,
-        TreeSmall = 10,
-        TreeTall = 11,
-        PlatformGrass = 12,
-        RockSmallA = 13,
-        RockSmallB = 14,
-        RockTallA = 15,
-        RockTallB = 16,
-        StoneLargeA = 17,
-        StoneLargeB = 18,
-        Fence = 19,
-        FenceCorner = 20,
-        BridgeWood = 21
-    }
 
     [System.Serializable]
     public class SerializableNodeData
