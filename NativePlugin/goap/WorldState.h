@@ -114,3 +114,50 @@ struct WorldState {
         return next;
     }
 };
+
+// ---------------------------------------------------------------------------
+// Blackboard
+// Holds the agent's real numeric runtime state — hunger, fatigue, inventory.
+// Updated every simulation tick. Call PopulateFacts() before each Plan()
+// call so the GOAP planner gets an up-to-date boolean snapshot.
+// ---------------------------------------------------------------------------
+struct Blackboard {
+    // Survival metrics
+    float hungerLevel  = 100.0f;  // 100 = full, 0 = starving
+    float fatigueLevel = 0.0f;    // 0 = rested, 100 = exhausted
+
+    // Inventory
+    int carriedWood = 0;
+    int carriedFood = 0;
+    int maxWoodCapacity = 5;
+    int maxFoodCapacity = 5;
+
+    // Drain rates — set from AgentProfile (wheelchair user drains fatigue 2x)
+    float hungerDrainRate  = 1.0f;
+    float fatigueDrainRate = 1.0f;
+
+    // Convenience checks
+    bool IsStarving()          const { return hungerLevel  <= 0.0f;  }
+    bool IsExhausted()         const { return fatigueLevel >= 100.0f; }
+    bool IsInventoryFullOfWood() const { return carriedWood >= maxWoodCapacity; }
+
+    // Called every simulation tick to drain hunger and apply fatigue.
+    void UpdateTick(float deltaTime) {
+        hungerLevel -= hungerDrainRate * deltaTime;
+        if (hungerLevel < 0.0f) hungerLevel = 0.0f;
+
+        fatigueLevel += fatigueDrainRate * deltaTime;
+        if (fatigueLevel > 100.0f) fatigueLevel = 100.0f;
+    }
+
+    // Convert numeric state into boolean WorldState facts for the GOAP planner.
+    // Call this once per tick before calling GOAPPlanner::Plan().
+    // Thresholds: hunger critical below 20, fatigue high above 80.
+    void PopulateFacts(WorldState& state) const {
+        state.Set("hunger_critical",  hungerLevel  <= 20.0f);
+        state.Set("fatigue_high",     fatigueLevel >= 80.0f);
+        state.Set("has_wood",         carriedWood  >  0);
+        state.Set("has_food",         carriedFood  >  0);
+        state.Set("inventory_full",   IsInventoryFullOfWood());
+    }
+};
