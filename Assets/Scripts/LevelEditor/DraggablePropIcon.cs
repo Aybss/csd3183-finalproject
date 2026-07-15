@@ -1,33 +1,19 @@
 using UnityEngine;
 using UnityEngine.EventSystems;
 
-/// <summary>
-/// Attach to each palette icon (a UI Button/Image). Handles dragging
-/// a ghost preview into the 3D scene and, on release over valid
-/// ground, instantiating the real prefab and registering it with
-/// the ObstacleGrid.
-/// </summary>
 [RequireComponent(typeof(RectTransform))]
 public class DraggablePropIcon : MonoBehaviour, IBeginDragHandler, IDragHandler, IEndDragHandler
 {
-    [Tooltip("Which entry in the PropLibrary this icon represents.")]
     public PropEntry entry;
-
-    [Tooltip("Camera used to raycast into the 3D scene. Defaults to Camera.main.")]
     public Camera sceneCamera;
-
-    [Tooltip("Layer mask for the ground/placement surface.")]
     public LayerMask groundMask;
-
-    [Tooltip("Snap placement to the ObstacleGrid cell centers.")]
     public bool snapToGrid = true;
-
-    [Tooltip("Material applied to the ghost preview (should be semi-transparent).")]
     public Material ghostMaterial;
 
     private GameObject _ghostInstance;
     private bool _validDrop;
     private float _pivotToBottomOffset;
+    private Vector2Int _currentHoveredCell;
 
     private void Awake()
     {
@@ -36,8 +22,6 @@ public class DraggablePropIcon : MonoBehaviour, IBeginDragHandler, IDragHandler,
 
     public void OnBeginDrag(PointerEventData eventData)
     {
-        Debug.Log($"[Drag] OnBeginDrag fired. entry={(entry != null ? entry.displayName : "NULL")}, prefab={(entry?.prefab != null ? entry.prefab.name : "NULL")}, camera={(sceneCamera != null ? sceneCamera.name : "NULL")}");
-
         if (entry == null || entry.prefab == null) return;
 
         _ghostInstance = Instantiate(entry.prefab);
@@ -48,32 +32,31 @@ public class DraggablePropIcon : MonoBehaviour, IBeginDragHandler, IDragHandler,
 
     public void OnDrag(PointerEventData eventData)
     {
-        if (_ghostInstance == null)
-        {
-            Debug.Log("[Drag] OnDrag fired but _ghostInstance is NULL (OnBeginDrag probably didn't create it).");
-            return;
-        }
+        if (_ghostInstance == null) return;
         UpdateGhostPosition(eventData);
     }
 
     public void OnEndDrag(PointerEventData eventData)
     {
-        Debug.Log($"[Drag] OnEndDrag fired. validDrop={_validDrop}, ghostExists={_ghostInstance != null}");
-
         if (_ghostInstance == null) return;
 
         if (_validDrop)
         {
-            GameObject placed = Instantiate(entry.prefab, _ghostInstance.transform.position, _ghostInstance.transform.rotation);
-            Debug.Log($"[Drag] Placed '{placed.name}' at {placed.transform.position}");
-            if (ObstacleGrid.Instance != null)
-                ObstacleGrid.Instance.RegisterProp(placed, placed.transform.position, entry);
-            else
-                Debug.LogWarning("[Drag] ObstacleGrid.Instance is NULL — no ObstacleGrid component found in the scene.");
+            if (ObstacleGrid.Instance.CanPlaceProp(_currentHoveredCell, entry.footprintSize))
+            {
+                Vector3 spawnPos = ObstacleGrid.Instance.GetFootprintCenterWorld(_currentHoveredCell, entry.footprintSize);
+                spawnPos.y = _ghostInstance.transform.position.y;
+
+                GameObject placed = Instantiate(entry.prefab, spawnPos, _ghostInstance.transform.rotation);
+
+                // Pass the direct cell coordinate to avoid centering rounding issues
+                ObstacleGrid.Instance.RegisterProp(placed, _currentHoveredCell, entry);
+            }
         }
-        else
+
+        if (GridVisualizer.Instance != null)
         {
-            Debug.LogWarning("[Drag] Drop was NOT valid — raycast never hit the ground layer during this drag.");
+            GridVisualizer.Instance.ClearPreview();
         }
 
         Destroy(_ghostInstance);
@@ -84,41 +67,40 @@ public class DraggablePropIcon : MonoBehaviour, IBeginDragHandler, IDragHandler,
     {
         if (sceneCamera == null)
         {
-            Debug.LogWarning("[Drag] sceneCamera is NULL — assign Scene Camera on the PaletteUI component.");
             _validDrop = false;
             return;
         }
 
         Ray ray = sceneCamera.ScreenPointToRay(eventData.position);
         _validDrop = Physics.Raycast(ray, out RaycastHit hit, 500f, groundMask);
-        Debug.Log($"[Drag] Raycast from {eventData.position}: hit={_validDrop}, mask={groundMask.value}" + (_validDrop ? $", hitObject={hit.collider.gameObject.name}, point={hit.point}" : ""));
 
         if (!_validDrop)
         {
-            // Park it off-screen/below ground while there's no valid hit.
             _ghostInstance.SetActive(false);
+            if (GridVisualizer.Instance != null) GridVisualizer.Instance.ClearPreview();
             return;
         }
 
         _ghostInstance.SetActive(true);
         Vector3 worldPos = hit.point;
 
-        if (snapToGrid && ObstacleGrid.Instance != null)
+        _currentHoveredCell = ObstacleGrid.Instance.WorldToCell(worldPos);
+
+        if (snapToGrid)
         {
-            Vector2Int cell = ObstacleGrid.Instance.WorldToCell(worldPos);
-            worldPos = ObstacleGrid.Instance.CellToWorld(cell);
+            worldPos = ObstacleGrid.Instance.GetFootprintCenterWorld(_currentHoveredCell, entry.footprintSize);
         }
 
         worldPos.y = hit.point.y + _pivotToBottomOffset;
-
         _ghostInstance.transform.position = worldPos;
+
+        if (GridVisualizer.Instance != null)
+        {
+            bool canPlace = ObstacleGrid.Instance.CanPlaceProp(_currentHoveredCell, entry.footprintSize);
+            GridVisualizer.Instance.UpdatePreview(_currentHoveredCell, entry.footprintSize, canPlace);
+        }
     }
 
-    /// <summary>
-    /// Returns how far the object's pivot sits above its actual visual
-    /// bottom edge. Add this to a ground hit point's Y to make the
-    /// object's base rest on the ground instead of its pivot.
-    /// </summary>
     private float GetPivotToBottomOffset(GameObject go)
     {
         Renderer[] renderers = go.GetComponentsInChildren<Renderer>();
@@ -142,7 +124,6 @@ public class DraggablePropIcon : MonoBehaviour, IBeginDragHandler, IDragHandler,
             renderer.materials = mats;
         }
 
-        // Ghost previews shouldn't block their own raycast.
         foreach (var col in go.GetComponentsInChildren<Collider>())
             col.enabled = false;
     }

@@ -1,18 +1,12 @@
+using System;
 using System.Collections.Generic;
 using UnityEngine;
 
-/// <summary>
-/// Tracks which world-space grid cells are occupied by placed props,
-/// along with their accessibility flags. This is the data structure
-/// that will eventually be flattened and passed into the C++
-/// PathfinderCore plugin (occupancy grid + hazard flags per cell).
-///
-/// For now it just needs to exist so the placement tool has
-/// somewhere to record what got dropped where.
-/// </summary>
 public class ObstacleGrid : MonoBehaviour
 {
     public static ObstacleGrid Instance { get; private set; }
+
+    public event System.Action OnGridChanged;
 
     [Tooltip("World size of one grid cell, in meters.")]
     public float cellSize = 1.0f;
@@ -23,12 +17,12 @@ public class ObstacleGrid : MonoBehaviour
     [Tooltip("Grid dimensions in cells.")]
     public Vector2Int gridSize = new Vector2Int(100, 100);
 
-    // Per-cell occupancy + flags. Flat array indexed as x + z * gridSize.x
     private bool[] _occupied;
     private bool[] _wheelchairBlocked;
     private bool[] _audioCue;
     private bool[] _visualCue;
 
+    private Dictionary<int, GameObject> _cellToPropMap = new Dictionary<int, GameObject>();
     private readonly List<PlacedProp> _placedProps = new List<PlacedProp>();
 
     private struct PlacedProp
@@ -51,9 +45,10 @@ public class ObstacleGrid : MonoBehaviour
     public Vector2Int WorldToCell(Vector3 worldPos)
     {
         Vector3 local = worldPos - originWorldPos;
-        int x = Mathf.FloorToInt(local.x / cellSize);
-        int z = Mathf.FloorToInt(local.z / cellSize);
-        return new Vector2Int(x, z);
+        const float epsilon = 0.0001f;
+        int x = Mathf.FloorToInt((local.x + epsilon) / cellSize);
+        int z = Mathf.FloorToInt((local.z + epsilon) / cellSize);
+        return new Vector2Int(Mathf.Clamp(x, 0, gridSize.x - 1), Mathf.Clamp(z, 0, gridSize.y - 1));
     }
 
     public Vector3 CellToWorld(Vector2Int cell)
@@ -69,25 +64,52 @@ public class ObstacleGrid : MonoBehaviour
         return cell.x >= 0 && cell.x < gridSize.x && cell.y >= 0 && cell.y < gridSize.y;
     }
 
-    private int Index(Vector2Int cell) => cell.x + cell.y * gridSize.x;
+    public int Index(Vector2Int cell) => cell.x + cell.y * gridSize.x;
 
-    /// <summary>Registers a placed prop's footprint into the grid.</summary>
-    public void RegisterProp(GameObject instance, Vector3 worldPos, PropEntry entry)
+    public Vector3 GetFootprintCenterWorld(Vector2Int baseCell, Vector2Int footprint)
     {
-        Vector2Int baseCell = WorldToCell(worldPos);
+        float width = footprint.x * cellSize;
+        float length = footprint.y * cellSize;
+        Vector3 minCorner = originWorldPos + new Vector3(baseCell.x * cellSize, 0f, baseCell.y * cellSize);
+        return minCorner + new Vector3(width * 0.5f, 0f, length * 0.5f);
+    }
+
+    public bool CanPlaceProp(Vector2Int baseCell, Vector2Int footprintSize)
+    {
+        for (int dx = 0; dx < footprintSize.x; dx++)
+        {
+            for (int dz = 0; dz < footprintSize.y; dz++)
+            {
+                Vector2Int cell = new Vector2Int(baseCell.x + dx, baseCell.y + dz);
+                if (!IsInBounds(cell) || _occupied[Index(cell)])
+                    return false;
+            }
+        }
+        return true;
+    }
+
+    public void RegisterProp(GameObject instance, Vector2Int baseCell, PropEntry entry)
+    {
+        if (!CanPlaceProp(baseCell, entry.footprintSize))
+        {
+            Debug.LogWarning("[ObstacleGrid] Cannot place prop here. Space is occupied or out of bounds.");
+            Destroy(instance);
+            return;
+        }
 
         for (int dx = 0; dx < entry.footprintSize.x; dx++)
         {
             for (int dz = 0; dz < entry.footprintSize.y; dz++)
             {
                 Vector2Int cell = new Vector2Int(baseCell.x + dx, baseCell.y + dz);
-                if (!IsInBounds(cell)) continue;
-
                 int i = Index(cell);
+
                 _occupied[i] = true;
                 _wheelchairBlocked[i] |= entry.isWheelchairObstacle;
                 _audioCue[i] |= entry.needsAudioCue;
                 _visualCue[i] |= entry.needsVisualCue;
+
+                _cellToPropMap[i] = instance;
             }
         }
 
@@ -97,9 +119,10 @@ public class ObstacleGrid : MonoBehaviour
             cell = baseCell,
             footprint = entry.footprintSize
         });
+
+        OnGridChanged?.Invoke();
     }
 
-    /// <summary>Removes a previously placed prop (e.g. for an undo action).</summary>
     public void RemoveProp(GameObject instance)
     {
         int idx = _placedProps.FindIndex(p => p.instance == instance);
@@ -118,28 +141,44 @@ public class ObstacleGrid : MonoBehaviour
                 _wheelchairBlocked[i] = false;
                 _audioCue[i] = false;
                 _visualCue[i] = false;
+
+                _cellToPropMap.Remove(i);
             }
         }
 
         _placedProps.RemoveAt(idx);
+        Destroy(instance);
+
+        OnGridChanged?.Invoke();
     }
 
-    /// <summary>
-    /// Flattens the occupancy layer into a byte array suitable for
-    /// marshaling to the C++ plugin later (0 = free, 1 = blocked).
-    /// </summary>
+    public bool TryDeletePropAtWorldPos(Vector3 worldPos)
+    {
+        Vector2Int cell = WorldToCell(worldPos);
+        if (!IsInBounds(cell)) return false;
+
+        int i = Index(cell);
+        if (_cellToPropMap.TryGetValue(i, out GameObject targetProp))
+        {
+            RemoveProp(targetProp);
+            return true;
+        }
+        return false;
+    }
+
+    public bool IsCellOccupied(Vector2Int cell)
+    {
+        if (!IsInBounds(cell)) return false;
+        return _occupied[Index(cell)];
+    }
+
     public byte[] ExportOccupancyBytes()
     {
         byte[] result = new byte[_occupied.Length];
         for (int i = 0; i < _occupied.Length; i++)
+        {
             result[i] = (byte)(_occupied[i] ? 1 : 0);
+        }
         return result;
-    }
-
-    private void OnDrawGizmosSelected()
-    {
-        Gizmos.color = new Color(0f, 1f, 0f, 0.15f);
-        Vector3 size = new Vector3(gridSize.x * cellSize, 0.01f, gridSize.y * cellSize);
-        Gizmos.DrawCube(originWorldPos + size * 0.5f, size);
     }
 }
