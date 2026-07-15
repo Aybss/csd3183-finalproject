@@ -25,6 +25,9 @@ public:
     bool IsBlocked(int x, int y) const;
     bool IsInBounds(int x, int y) const;
 
+    int GetWidth() const { return _width; }
+    int GetHeight() const { return _height; }
+
     // Finds a path from start to end (inclusive). Returns an empty
     // vector if no path exists or the inputs are invalid.
     std::vector<PathNode> FindPath(int startX, int startY, int endX, int endY);
