@@ -32,19 +32,26 @@ MonoBehaviour:
     icon: {fileID: 21300000, guid: 71f5982e53304b74098d206d515ad3a8, type: 3}
     footprintSize: {x: 2, y: 2}
     isWheelchairObstacle: 1
-    needsAudioCue: 1
+    needsAudioCue: 0
     needsVisualCue: 1
   - displayName: Fence
     prefab: {fileID: 919132149155446097, guid: 593780d12655edf4195a5d510c38c163, type: 3}
     icon: {fileID: 21300000, guid: bd837650ece2163498f53c78e10001d4, type: 3}
     footprintSize: {x: 1, y: 1}
     isWheelchairObstacle: 1
-    needsAudioCue: 1
+    needsAudioCue: 0
     needsVisualCue: 1
   - displayName: Planter
     prefab: {fileID: 919132149155446097, guid: e6947a51fa0be304492335677330a56d, type: 3}
     icon: {fileID: 21300000, guid: a5e41cd3748040140a89655abdc7571a, type: 3}
     footprintSize: {x: 1, y: 1}
     isWheelchairObstacle: 1
-    needsAudioCue: 1
+    needsAudioCue: 0
+    needsVisualCue: 1
+  - displayName: Long Path
+    prefab: {fileID: 919132149155446097, guid: 92de46546715e0b4390da1e82fca9465, type: 3}
+    icon: {fileID: 21300000, guid: 806be1cf6afcc5a42b1095004d624c25, type: 3}
+    footprintSize: {x: 1, y: 1}
+    isWheelchairObstacle: 0
+    needsAudioCue: 0
     needsVisualCue: 1

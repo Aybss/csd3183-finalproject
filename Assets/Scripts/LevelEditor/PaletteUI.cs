@@ -2,24 +2,11 @@ using UnityEngine;
 using UnityEngine.UI;
 using TMPro;
 
-/// <summary>
-/// Populates a scrollable side panel with one draggable icon per
-/// entry in the assigned PropLibrary. Attach to an empty GameObject
-/// and assign the "Content" transform of a ScrollView as the parent.
-/// </summary>
 public class PaletteUI : MonoBehaviour
 {
     public PropLibrary library;
-
-    [Tooltip("Prefab with an Image + DraggablePropIcon component (see setup notes).")]
     public GameObject iconButtonPrefab;
-
-    [Tooltip("Parent transform (e.g. ScrollView/Viewport/Content).")]
     public Transform contentParent;
-
-    public Camera sceneCamera;
-    public LayerMask groundMask;
-    public Material ghostMaterial;
 
     private void Start()
     {
@@ -34,9 +21,10 @@ public class PaletteUI : MonoBehaviour
             return;
         }
 
+        // Keep both the "X" Delete Mode button and the "S" Select Mode button
         foreach (Transform child in contentParent)
         {
-            if (child.name != "DeleteModeButton")
+            if (child.name != "DeleteModeButton" && child.name != "SelectModeButton")
             {
                 Destroy(child.gameObject);
             }
@@ -46,7 +34,6 @@ public class PaletteUI : MonoBehaviour
         {
             GameObject go = Instantiate(iconButtonPrefab, contentParent);
             go.name = "Icon_" + entry.displayName;
-
             go.transform.SetAsLastSibling();
 
             Image img = go.GetComponentInChildren<Image>();
@@ -63,25 +50,25 @@ public class PaletteUI : MonoBehaviour
                 tmpLabel.fontSizeMin = 8f;
                 tmpLabel.fontSizeMax = 14f;
             }
-            else
+
+            if (go.TryGetComponent(out DraggablePropIcon oldDrag))
             {
-                Text label = go.GetComponentInChildren<Text>();
-                if (label != null)
-                {
-                    label.text = entry.displayName;
-                    label.alignment = TextAnchor.LowerCenter;
-                    label.horizontalOverflow = HorizontalWrapMode.Wrap;
-                    label.verticalOverflow = VerticalWrapMode.Overflow;
-                }
+                Destroy(oldDrag);
             }
 
-            DraggablePropIcon drag = go.GetComponent<DraggablePropIcon>();
-            if (drag == null) drag = go.AddComponent<DraggablePropIcon>();
+            Button btn = go.GetComponent<Button>();
+            if (btn == null) btn = go.AddComponent<Button>();
 
-            drag.entry = entry;
-            drag.sceneCamera = sceneCamera != null ? sceneCamera : Camera.main;
-            drag.groundMask = groundMask;
-            drag.ghostMaterial = ghostMaterial;
+            PropEntry currentEntry = entry;
+            btn.onClick.RemoveAllListeners();
+            btn.onClick.AddListener(() =>
+            {
+                GridInteractionManager interactionManager = FindObjectOfType<GridInteractionManager>();
+                if (interactionManager != null)
+                {
+                    interactionManager.SetSelectedProp(currentEntry);
+                }
+            });
         }
     }
 }
