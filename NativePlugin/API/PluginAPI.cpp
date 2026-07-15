@@ -1,6 +1,6 @@
 // api/PluginAPI.cpp
 #include "spatial/WorldGrid.h"
-#include "navigation/AStarPathfinder.h"
+//#include "navigation/AStarPathfinder.h"
 #include "goap/WorldState.h"
 #include "spatial/AgentMemory.h"
 #include "spatial/Perception.h" // Needed for UpdatePhysicalSenses
@@ -63,22 +63,22 @@ EXPORT_API void SetBuildSite(int row, int col) {
 // 2. PATHFINDING (Using Local Memory, NOT Global Grid!)
 // --------------------------------------------------------
 // Unity asks for a path, C++ fills the outBuffer array
-EXPORT_API int RequestPath(int agentID, int startR, int startC, int endR, int endC, int* outBuffer) {
-    AgentMemory& memory = GetMemoryByID(agentID);
-
-    // Member 2 (Pathfinder) MUST update their AStarPathfinder.h signature 
-    // to accept 'AgentMemory' instead of 'WorldGrid' to respect Fog of War!
-    std::vector<GridPos> path = AStarPathfinder::CalculatePath(memory, startR, startC, endR, endC);
-
-    // Flatten the GridPos path into a 1D int array for Unity [r1, c1, r2, c2...]
-    int bufferIndex = 0;
-    for (const auto& node : path) {
-        outBuffer[bufferIndex++] = node.row;
-        outBuffer[bufferIndex++] = node.col;
-    }
-
-    return static_cast<int>(path.size());
-}
+//EXPORT_API int RequestPath(int agentID, int startR, int startC, int endR, int endC, int* outBuffer) {
+//    AgentMemory& memory = GetMemoryByID(agentID);
+//
+//    // Member 2 (Pathfinder) MUST update their AStarPathfinder.h signature 
+//    // to accept 'AgentMemory' instead of 'WorldGrid' to respect Fog of War!
+//    std::vector<GridPos> path = AStarPathfinder::CalculatePath(memory, startR, startC, endR, endC);
+//
+//    // Flatten the GridPos path into a 1D int array for Unity [r1, c1, r2, c2...]
+//    int bufferIndex = 0;
+//    for (const auto& node : path) {
+//        outBuffer[bufferIndex++] = node.row;
+//        outBuffer[bufferIndex++] = node.col;
+//    }
+//
+//    return static_cast<int>(path.size());
+//}
 
 // --------------------------------------------------------
 // 3. SLAM SYNC & PERCEPTION 

@@ -2,25 +2,12 @@
 #pragma once
 #include "spatial/WorldGrid.h"
 #include "spatial/AgentMemory.h"
-#include "goap/WorldState.h"
+#include "goap/WorldState.h" // Inherits Member 3's AgentProfile & DisabilityType[cite: 10, 11]
 #include <string>
-
-enum class AgentRole {
-    FORAGER,    // Blind
-    LUMBERJACK, // Deaf
-    BUILDER     // Wheelchair
-};
-
-struct AgentProfile {
-    AgentRole role;
-    int sightRadius;
-    int hearingRange;
-    float fatigueRate; // Lumberjack drains fastest, Builder slowest
-};
 
 // Tactical localized sweep (bumping into walls/objects and clearing Fog of War)
 inline void UpdatePhysicalSenses(int r, int c, const WorldGrid& grid, AgentMemory& memory, const AgentProfile& profile) {
-    int radius = profile.sightRadius;
+    int radius = profile.sightRadius; // Successfully uses Member 3's profile sightRadius
 
     for (int dr = -radius; dr <= radius; ++dr) {
         for (int dc = -radius; dc <= radius; ++dc) {
@@ -62,7 +49,7 @@ inline WorldState InterpretSensoryData(int agentRow, int agentCol, const WorldGr
     state.Set("at_build_site", (agentRow == world.buildSiteRow && agentCol == world.buildSiteCol));
 
     // 1. Audio check for food (Only roles with hearing > 0 can detect food from a distance)
-    if (profile.hearingRange > 0) {
+    if (profile.hearingRange > 0) { // Successfully uses Member 3's profile hearingRange
         for (int r = -profile.hearingRange; r <= profile.hearingRange; ++r) {
             for (int c = -profile.hearingRange; c <= profile.hearingRange; ++c) {
                 int targetR = agentRow + r;
