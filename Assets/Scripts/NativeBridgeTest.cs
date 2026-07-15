@@ -1,34 +1,45 @@
 using UnityEngine;
 
-/// <summary>
-/// Quick smoke test for the PathfinderCore native plugin.
-/// Attach to any empty GameObject in a test scene and press Play.
-/// Check the Console for results.
-/// </summary>
 public class NativeBridgeTest : MonoBehaviour
 {
     private void Start()
     {
-        Debug.Log("[Test] Initializing a 10x10 grid...");
-        NativeBridge.Init(10, 10);
+        RunNativeTest();
+    }
 
-        Debug.Log("[Test] Blocking a wall across column 5, rows 0-7 (leaving a gap at the top)...");
-        for (int y = 0; y < 8; y++)
-            NativeBridge.SetBlocked(5, y, true);
+    public void RunNativeTest()
+    {
+        int width = 10;
+        int height = 10;
 
-        Debug.Log("[Test] Finding path from (0,0) to (9,9)...");
-        var path = NativeBridge.FindPath(0, 0, 9, 9);
+        Debug.Log("[Test] Initializing native grid...");
+        NativeBridge.InitializeGrid(width, height);
 
-        if (path == null)
+        NativeBridge.SetCellBlocked(2, 2, 1);
+        NativeBridge.SetCellBlocked(2, 3, 1);
+        NativeBridge.SetCellBlocked(2, 4, 1);
+
+        int[] pathX = new int[100];
+        int[] pathY = new int[100];
+
+        Debug.Log("[Test] Requesting path from (1,1) to (5,5)...");
+        int pathLength = NativeBridge.FindPath(1, 1, 5, 5, pathX, pathY, pathX.Length);
+
+        if (pathLength > 0)
         {
-            Debug.LogError("[Test] FAILED — no path found. Something is wrong with the grid or the wall fully blocks it.");
-            return;
+            Debug.Log($"[Test] Path found! Length: {pathLength} steps.");
+            for (int i = 0; i < pathLength; i++)
+            {
+                Debug.Log($"Step {i + 1}: ({pathX[i]}, {pathY[i]})");
+            }
         }
-
-        Debug.Log($"[Test] SUCCESS — path found with {path.Count} steps:");
-        string pathStr = "";
-        foreach (var cell in path)
-            pathStr += $"({cell.x},{cell.y}) ";
-        Debug.Log(pathStr);
+        else if (pathLength == -1)
+        {
+            Debug.LogWarning("[Test] No path exists between those points.");
+        }
+        else if (pathLength == -2)
+        {
+            Debug.LogError("[Test] Path found, but it is longer than the pre-allocated buffer size.");
+        }
     }
 }
