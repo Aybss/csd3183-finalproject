@@ -59,29 +59,47 @@ inline bool CheckLineOfSight(int startR, int startC, int endR, int endC, const W
 inline WorldState InterpretSensoryData(int agentRow, int agentCol, const WorldGrid& world, const AgentMemory& memory, const AgentProfile& profile) {
     WorldState symbolicState;
 
+    // Default facts
     symbolicState.Set("ramp_nearby", false);
     symbolicState.Set("stairs_nearby", false);
     symbolicState.Set("tactile_paving_detected", false);
-    symbolicState.Set("crowd_present", false);
+    symbolicState.Set("crosswalk_detected", false); // Matches AgentActions.h
+    symbolicState.Set("crowd_present", false);      // Matches WalkToDestination logic
 
-    // Use your teammate's dynamic sightRadius parameter!
-    int checkRadius = profile.sightRadius;
-
-    for (int r = -checkRadius; r <= checkRadius; ++r) {
-        for (int c = -checkRadius; c <= checkRadius; ++c) {
+    // 1. VISUAL & TACTILE SWEEP (Using sightRadius)
+    int sightRadius = profile.sightRadius;
+    for (int r = -sightRadius; r <= sightRadius; ++r) {
+        for (int c = -sightRadius; c <= sightRadius; ++c) {
             int targetR = agentRow + r;
             int targetC = agentCol + c;
 
             if (targetR >= 0 && targetR < world.height && targetC >= 0 && targetC < world.width) {
+                // Check Crowds (Even if blind, being physically bumped by a crowd matters)
+                if (world.crowdDensityLayer.at(targetR, targetC) > 0) {
+                    symbolicState.Set("crowd_present", true);
+                }
+
                 if (CheckLineOfSight(agentRow, agentCol, targetR, targetC, world)) {
-                    if (world.stairLayer.at(targetR, targetC)) {
-                        symbolicState.Set("stairs_nearby", true);
-                    }
-                    if (world.rampLayer.at(targetR, targetC) > 0.0f) {
-                        symbolicState.Set("ramp_nearby", true);
-                    }
-                    if (world.tactilePaving.at(targetR, targetC)) {
-                        symbolicState.Set("tactile_paving_detected", true);
+                    if (world.stairLayer.at(targetR, targetC)) symbolicState.Set("stairs_nearby", true);
+                    if (world.rampLayer.at(targetR, targetC) > 0.0f) symbolicState.Set("ramp_nearby", true);
+                    if (world.tactilePaving.at(targetR, targetC)) symbolicState.Set("tactile_paving_detected", true);
+                }
+            }
+        }
+    }
+
+    // 2. AUDIO SWEEP (Using hearingRange)
+    // Sound bypasses line-of-sight and relies purely on distance and hearing capability
+    int hearingRadius = profile.hearingRange;
+    if (hearingRadius > 0) {
+        for (int r = -hearingRadius; r <= hearingRadius; ++r) {
+            for (int c = -hearingRadius; c <= hearingRadius; ++c) {
+                int targetR = agentRow + r;
+                int targetC = agentCol + c;
+
+                if (targetR >= 0 && targetR < world.height && targetC >= 0 && targetC < world.width) {
+                    if (world.audioBeaconLayer.at(targetR, targetC)) {
+                        symbolicState.Set("crosswalk_detected", true);
                     }
                 }
             }

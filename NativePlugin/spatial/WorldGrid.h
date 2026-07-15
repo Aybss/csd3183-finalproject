@@ -11,4 +11,8 @@ struct WorldGrid {
     MapLayer<float> rampLayer;          // float value representing incline grade percentage
     MapLayer<bool>  tactilePaving;      // true = explicit guiding paths painted on floor
     MapLayer<float> audioChimeVolume;   // float representing volume propagation from audio crosswalk chirpers
+
+    MapLayer<bool> audioBeaconLayer;   // Emits sound for crosswalks
+    MapLayer<int> crowdDensityLayer;   // Tracks how many people are in a cell (0 = empty, >0 = crowded)
+
 };

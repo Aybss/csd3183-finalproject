@@ -7,14 +7,21 @@
 
 static WorldGrid g_WorldGrid;
 
+
 EXPORT_API void InitializeGrid(int width, int height) {
     g_WorldGrid.width = width;
     g_WorldGrid.height = height;
 
+    // Existing layers
     g_WorldGrid.wallLayer.resize(width, height, false);
     g_WorldGrid.stairLayer.resize(width, height, false);
     g_WorldGrid.rampLayer.resize(width, height, 0.0f);
+
+    // NEW: Allocate memory for the Phase 2 layers
+    g_WorldGrid.audioBeaconLayer.resize(width, height, false);
+    g_WorldGrid.crowdDensityLayer.resize(width, height, 0);
 }
+
 
 EXPORT_API void SetWallData(bool* flatWallArray) {
     int totalCells = g_WorldGrid.width * g_WorldGrid.height;
@@ -51,4 +58,20 @@ EXPORT_API int RequestPath(int startR, int startC, int endR, int endC, int profi
     }
 
     return static_cast<int>(path.size()); // Tell Unity how many steps are in the path[cite: 4]
+}
+
+// NEW: Unity calls this once during map setup to place crosswalk chimes
+EXPORT_API void SetAudioBeaconData(bool* flatAudioArray) {
+    int totalCells = g_WorldGrid.width * g_WorldGrid.height;
+    for (int i = 0; i < totalCells; ++i) {
+        g_WorldGrid.audioBeaconLayer[i] = flatAudioArray[i];
+    }
+}
+
+// NEW: Unity calls this EVERY FRAME to update where the moving pedestrians are
+EXPORT_API void UpdateCrowdDensity(int* flatCrowdArray) {
+    int totalCells = g_WorldGrid.width * g_WorldGrid.height;
+    for (int i = 0; i < totalCells; ++i) {
+        g_WorldGrid.crowdDensityLayer[i] = flatCrowdArray[i];
+    }
 }
