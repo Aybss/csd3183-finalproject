@@ -1,0 +1,164 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!1 &5155707303494708831
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 5039860461376709873}
+  - component: {fileID: 345553676615345004}
+  m_Layer: 0
+  m_Name: TerrainManager
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &5039860461376709873
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5155707303494708831}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 50, y: 0, z: 50}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &345553676615345004
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5155707303494708831}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d018dce80f8a2104ba90e9a23771381c, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  width: 100
+  height: 100
+  cellSize: 1
+  riverMeanderFrequency: 0.1
+  riverMaxMeanderAmplitude: 12
+  riverTileThickness: 3
+  pondCount: 5
+  maxPondRadius: 2
+  riverRotationOffsetSteps: 1
+  minBridgeSpacing: 3
+  forcedBridgeInterval: 12
+  tilePack:
+    grassCenter: {fileID: 919132149155446097, guid: 0b3dbf4c7d4904e4dbf68fe00e127910, type: 3}
+    waterCenter:
+      prefab: {fileID: 0}
+      density: 0
+      yOffset: 0
+    ground_riverSide:
+      prefab: {fileID: 919132149155446097, guid: a43dfbe503cd6bb4c8cab5fcb66d2506, type: 3}
+      density: 0.01
+      yOffset: 1
+    ground_riverCorner:
+      prefab: {fileID: 919132149155446097, guid: a43dfbe503cd6bb4c8cab5fcb66d2506, type: 3}
+      density: 0.01
+      yOffset: 1
+    ground_riverSideOpen:
+      prefab: {fileID: 919132149155446097, guid: a43dfbe503cd6bb4c8cab5fcb66d2506, type: 3}
+      density: 0.01
+      yOffset: 1
+    fence:
+      prefab: {fileID: 919132149155446097, guid: f6d4e594ee8d4f440a75b083a8a278aa, type: 3}
+      density: 0.01
+      yOffset: 1
+    fence_corner:
+      prefab: {fileID: 919132149155446097, guid: 1c3708e69a72f924cadf4a4ea6e4c6c8, type: 3}
+      density: 0.01
+      yOffset: 1
+    path:
+      prefab: {fileID: 919132149155446097, guid: bc5d4721b0c29f24aac8932a9c53dbc8, type: 3}
+      density: 0.01
+      yOffset: 1
+    bridge_wood:
+      prefab: {fileID: 919132149155446097, guid: 9d199f2f56cdd71488f9f6e0b372c66d, type: 3}
+      density: 0.01
+      yOffset: 1
+    tent_a:
+      prefab: {fileID: 919132149155446097, guid: 5ce4083c04791ba4e94bd83288b1bdf0, type: 3}
+      density: 0.01
+      yOffset: 1
+    tent_b:
+      prefab: {fileID: 919132149155446097, guid: 3caa0360b7a3c1a4497222f97bcdd628, type: 3}
+      density: 0.01
+      yOffset: 1
+    statue_obelisk:
+      prefab: {fileID: 919132149155446097, guid: 9d1e4d9b300b7894d99712a3fb38dcfd, type: 3}
+      density: 0.01
+      yOffset: 1
+    log_stack:
+      prefab: {fileID: 919132149155446097, guid: 7b3d8d7b118ad3a45957953479797c29, type: 3}
+      density: 0.01
+      yOffset: 1
+    bush:
+      prefab: {fileID: 919132149155446097, guid: 1db449f51886e6243b74f6fee9bc4fd6, type: 3}
+      density: 0.01
+      yOffset: 1
+    mushroom:
+      prefab: {fileID: 919132149155446097, guid: 36c0223266b77e6458e91e2d77dd9de2, type: 3}
+      density: 0.01
+      yOffset: 1
+    crop_wheat:
+      prefab: {fileID: 919132149155446097, guid: 2dbd77cc58c58cc478acef0115e1ad1d, type: 3}
+      density: 0.01
+      yOffset: 1
+    crop_berries:
+      prefab: {fileID: 919132149155446097, guid: eaf5141354188d640bc5cd40e37b9a94, type: 3}
+      density: 0.01
+      yOffset: 1
+    tree_large:
+      prefab: {fileID: 919132149155446097, guid: 74c4ec7b10d46984e81b9ac3aeaca84a, type: 3}
+      density: 0.01
+      yOffset: 1
+    tree_small:
+      prefab: {fileID: 919132149155446097, guid: afece932deaf0a844b125145502de7e3, type: 3}
+      density: 0.01
+      yOffset: 1
+    tree_tall:
+      prefab: {fileID: 0}
+      density: 0.01
+      yOffset: 1
+    platform_grass:
+      prefab: {fileID: 919132149155446097, guid: 382cd261c70b5f146bc2b4dade7ff8f3, type: 3}
+      density: 0.01
+      yOffset: 1
+    rock_small_a:
+      prefab: {fileID: 919132149155446097, guid: fc7db1049d22f294da0a91f1501bcbe6, type: 3}
+      density: 0.01
+      yOffset: 1
+    rock_small_b:
+      prefab: {fileID: 919132149155446097, guid: 3eb623121c1d6be4e9ac6456dd8af7c9, type: 3}
+      density: 0.01
+      yOffset: 1
+    rock_tall_a:
+      prefab: {fileID: 919132149155446097, guid: a9cba56f7330874499961baf4d57827d, type: 3}
+      density: 0.01
+      yOffset: 1
+    rock_tall_b:
+      prefab: {fileID: 919132149155446097, guid: 05e4e88a973101b488874eafb14980d4, type: 3}
+      density: 0.01
+      yOffset: 0
+    stone_large_a:
+      prefab: {fileID: 0}
+      density: 0.01
+      yOffset: 0
+    stone_large_b:
+      prefab: {fileID: 0}
+      density: 0.01
+      yOffset: 1
+  saveSystem: {fileID: 0}

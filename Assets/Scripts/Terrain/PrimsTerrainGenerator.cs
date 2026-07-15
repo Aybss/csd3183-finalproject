@@ -16,10 +16,6 @@ namespace ProceduralTerrain
 
     public class PrimsTerrainGenerator : MonoBehaviour
     {
-        // Generate new map on SimulationEvent
-        private void OnEnable() => SimulationEvents.OnNewRandomMap += GenerateNewMap;
-        private void OnDisable() => SimulationEvents.OnNewRandomMap -= GenerateNewMap;
-
         [Header("Grid Scale Settings")]
         public int width = 50;
         public int height = 50;
@@ -233,7 +229,11 @@ namespace ProceduralTerrain
                 for (int y = 0; y < height; y++)
                 {
                     PathfindingNode node = grid[x, y];
-                    Vector3 basePos = node.WorldPosition;
+                    Vector3 basePos;
+                    basePos.x = node.WorldPosition.x - width / 2;
+                    basePos.y = node.WorldPosition.y - cellSize;
+                    basePos.z = node.WorldPosition.z - height / 2;
+
                     Vector2Int pos = new Vector2Int(x, y);
 
                     if (node.Type != BiomeType.Water)
@@ -437,6 +437,16 @@ namespace ProceduralTerrain
             }
 
             return dataMatrix;
+        }
+
+        private void OnEnable()
+        {
+            SimulationEvents.OnNewRandomMap += GenerateNewMap;
+        }
+
+        private void OnDisable()
+        {
+            SimulationEvents.OnNewRandomMap -= GenerateNewMap;
         }
     }
 }
