@@ -14,5 +14,7 @@ struct WorldGrid {
 
     MapLayer<bool> audioBeaconLayer;   // Emits sound for crosswalks
     MapLayer<int> crowdDensityLayer;   // Tracks how many people are in a cell (0 = empty, >0 = crowded)
+    MapLayer<bool> woodLayer;          // true = wood pile on this tile
+    MapLayer<bool> foodLayer;          // true = food node on this tile
 
 };
