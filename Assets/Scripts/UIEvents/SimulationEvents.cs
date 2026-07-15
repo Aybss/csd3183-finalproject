@@ -17,4 +17,6 @@ public static class SimulationEvents
     public static Action    OnNewRandomMap;
     public static Action    OnLoadMap;
     public static Action    OnOpenMapEditorButton;
+
+    public static Action<string> OnMapPlaceSelected;
 }
