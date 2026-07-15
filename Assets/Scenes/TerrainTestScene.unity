@@ -263,11 +263,11 @@ MonoBehaviour:
   width: 100
   height: 100
   cellSize: 1
-  riverMeanderFrequency: 0.05
+  riverMeanderFrequency: 0.1
   riverMaxMeanderAmplitude: 12
-  riverTileThickness: 1
-  riverRotationOffsetSteps: 0
-  minBridgeSpacing: 4
+  riverTileThickness: 3
+  riverRotationOffsetSteps: 1
+  minBridgeSpacing: 3
   tilePack:
     grassCenter: {fileID: 919132149155446097, guid: 0b3dbf4c7d4904e4dbf68fe00e127910, type: 3}
     waterCenter:
@@ -315,11 +315,11 @@ MonoBehaviour:
       density: 0.01
       yOffset: 1
     log_stack:
-      prefab: {fileID: 0}
+      prefab: {fileID: 919132149155446097, guid: 7b3d8d7b118ad3a45957953479797c29, type: 3}
       density: 0.01
       yOffset: 1
     bush:
-      prefab: {fileID: 919132149155446097, guid: 7b3d8d7b118ad3a45957953479797c29, type: 3}
+      prefab: {fileID: 919132149155446097, guid: 1db449f51886e6243b74f6fee9bc4fd6, type: 3}
       density: 0.01
       yOffset: 1
     mushroom:

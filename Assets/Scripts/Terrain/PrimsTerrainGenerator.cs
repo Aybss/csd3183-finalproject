@@ -26,21 +26,30 @@ namespace ProceduralTerrain
         public float riverMeanderFrequency = 0.05f;
         [Tooltip("Maximum distance the river center can drift.")]
         public float riverMaxMeanderAmplitude = 12f;
-        [Tooltip("The exact thickness of your river in grid cells.")]
-        [Range(1, 5)] public int riverTileThickness = 1;
+        [Tooltip("Set this to 2 for a river that is exactly 2 blocks wide.")]
+        [Range(1, 5)] public int riverTileThickness = 2;
+
+        [Header("Random Small Water Bodies")]
+        [Tooltip("Number of random small ponds to seed across the plains.")]
+        public int pondCount = 5;
+        [Tooltip("Maximum size parameter for seeded ponds.")]
+        [Range(1, 4)] public int maxPondRadius = 2;
 
         [Header("Kenney Asset Alignment Helper")]
         [Tooltip("Nudges all calculated river rotations in steps of 90 degrees.")]
         [Range(0, 3)] public int riverRotationOffsetSteps = 0;
 
-        [Header("Infrastructure")]
+        [Header("Infrastructure & Bridge Traversal")]
         public int minBridgeSpacing = 8;
+        [Tooltip("Force bridges to spawn at these intervals along the Y axis to guarantee pathfinding connection.")]
+        public int forcedBridgeInterval = 12;
 
         public KenneyTileConfiguration tilePack;
         public GridSaveSystem saveSystem;
 
         private PathfindingNode[,] grid;
         private HashSet<Vector2Int> spawnedBridgeCoordinates = new HashSet<Vector2Int>();
+        private HashSet<Vector2Int> forcedBridgeCoordinates = new HashSet<Vector2Int>();
         private float seedX;
 
         // Keep track of spawned objects so they can be cleaned up on reload
@@ -96,12 +105,17 @@ namespace ProceduralTerrain
             }
             spawnedVisualObjects.Clear();
             spawnedBridgeCoordinates.Clear();
+            forcedBridgeCoordinates.Clear();
         }
 
         private void GenerateNaturalPlains()
         {
             grid = new PathfindingNode[width, height];
             HashSet<Vector2Int> riverCoordinates = CalculatePathWalkedRiver();
+            HashSet<Vector2Int> pondCoordinates = CalculateRandomPonds(riverCoordinates);
+
+            // Pre-calculate forced bridge positions along the river
+            CalculateForcedBridgePositions(riverCoordinates);
 
             for (int x = 0; x < width; x++)
             {
@@ -111,14 +125,25 @@ namespace ProceduralTerrain
                     Vector3 worldPos = new Vector3(x * cellSize, 0f, y * cellSize);
 
                     BiomeType assignedType = BiomeType.Grass;
+                    bool walkable = true;
+                    float weight = 1.0f;
 
-                    if (riverCoordinates.Contains(pos))
+                    if (riverCoordinates.Contains(pos) || pondCoordinates.Contains(pos))
                     {
                         assignedType = BiomeType.Water;
+                        walkable = false; // Water blocks movement by default
+                        weight = 5.0f;
                     }
 
-                    float weight = (assignedType == BiomeType.Water) ? 5.0f : 1.0f;
-                    grid[x, y] = new PathfindingNode(pos, worldPos, assignedType, weight, true);
+                    // FORCE WALKABILITY FOR PATHFINDING ON BRIDGE TILES
+                    if (forcedBridgeCoordinates.Contains(pos))
+                    {
+                        assignedType = BiomeType.Water; // Visually water underneath
+                        walkable = true; // Pathfinding can cross here!
+                        weight = 1.0f; // Low cost to traverse bridge
+                    }
+
+                    grid[x, y] = new PathfindingNode(pos, worldPos, assignedType, weight, walkable);
                 }
             }
         }
@@ -135,8 +160,7 @@ namespace ProceduralTerrain
 
                 int riverCenterTargetX = Mathf.RoundToInt(gridCenterColumn + (normalizedDrift * riverMaxMeanderAmplitude));
 
-                int halfThickness = riverTileThickness / 2;
-                for (int offset = -halfThickness; offset <= halfThickness; offset++)
+                for (int offset = 0; offset < riverTileThickness; offset++)
                 {
                     int targetX = riverCenterTargetX + offset;
                     if (targetX >= 0 && targetX < width)
@@ -148,6 +172,56 @@ namespace ProceduralTerrain
             return riverPoints;
         }
 
+        private void CalculateForcedBridgePositions(HashSet<Vector2Int> riverCoordinates)
+        {
+            // Pick static Y coordinates at regular intervals
+            for (int y = 4; y < height - 4; y += forcedBridgeInterval)
+            {
+                // Find all river tiles on this horizontal row
+                foreach (Vector2Int coord in riverCoordinates)
+                {
+                    if (coord.y == y)
+                    {
+                        forcedBridgeCoordinates.Add(coord);
+                    }
+                }
+            }
+        }
+
+        private HashSet<Vector2Int> CalculateRandomPonds(HashSet<Vector2Int> riverPoints)
+        {
+            HashSet<Vector2Int> pondPoints = new HashSet<Vector2Int>();
+
+            for (int i = 0; i < pondCount; i++)
+            {
+                // Select a random coordinate away from the edges and the central river
+                int centerX = Random.Range(5, width - 5);
+                int centerY = Random.Range(5, height - 5);
+                Vector2Int center = new Vector2Int(centerX, centerY);
+
+                if (riverPoints.Contains(center)) continue;
+
+                int radius = Random.Range(1, maxPondRadius + 1);
+
+                // Carve a small organic circular lake shape
+                for (int dx = -radius; dx <= radius; dx++)
+                {
+                    for (int dy = -radius; dy <= radius; dy++)
+                    {
+                        if (dx * dx + dy * dy <= radius * radius + 0.5f)
+                        {
+                            Vector2Int pondTile = new Vector2Int(centerX + dx, centerY + dy);
+                            if (IsInsideBounds(pondTile.x, pondTile.y) && !riverPoints.Contains(pondTile))
+                            {
+                                pondPoints.Add(pondTile);
+                            }
+                        }
+                    }
+                }
+            }
+            return pondPoints;
+        }
+
         private void ConstructVisualGrid(GridSaveSchema loadedSchema = null)
         {
             for (int x = 0; x < width; x++)
@@ -156,6 +230,7 @@ namespace ProceduralTerrain
                 {
                     PathfindingNode node = grid[x, y];
                     Vector3 basePos = node.WorldPosition;
+                    Vector2Int pos = new Vector2Int(x, y);
 
                     if (node.Type != BiomeType.Water)
                     {
@@ -163,7 +238,6 @@ namespace ProceduralTerrain
 
                         if (loadedSchema != null)
                         {
-                            // Rebuild saved visual props directly using saved indices
                             SerializableNodeData savedNode = loadedSchema.serializedNodes.Find(n => n.gridX == x && n.gridY == y);
                             if (savedNode != null && savedNode.objectTypeIndex != (int)PropObjectType.None)
                             {
@@ -187,43 +261,34 @@ namespace ProceduralTerrain
                     bool landW = IsLand(x - 1, y);
                     bool landNW = IsLand(x - 1, y + 1);
 
-                    // Default to solid water center prefab
-                    GameObject selectedTile = tilePack.waterCenter.prefab;
+                    // Force the riverSideOpen prefab for ALL water coordinates
+                    GameObject selectedTile = tilePack.ground_riverSideOpen.prefab;
                     float baseRotation = 0f;
-                    float appliedRiverYOffset = tilePack.waterCenter.yOffset;
+                    float appliedRiverYOffset = tilePack.ground_riverSideOpen.yOffset;
 
-                    // Straight shores
-                    if (landN && !landS && !landE && !landW) { selectedTile = tilePack.ground_riverSide.prefab; baseRotation = 0f; appliedRiverYOffset = tilePack.ground_riverSide.yOffset; }
-                    else if (landE && !landW && !landN && !landS) { selectedTile = tilePack.ground_riverSide.prefab; baseRotation = 90f; appliedRiverYOffset = tilePack.ground_riverSide.yOffset; }
-                    else if (landS && !landN && !landE && !landW) { selectedTile = tilePack.ground_riverSide.prefab; baseRotation = 180f; appliedRiverYOffset = tilePack.ground_riverSide.yOffset; }
-                    else if (landW && !landE && !landN && !landS) { selectedTile = tilePack.ground_riverSide.prefab; baseRotation = 270f; appliedRiverYOffset = tilePack.ground_riverSide.yOffset; }
-
-                    // Corner shores
-                    else if (landN && landE && !landS && !landW) { selectedTile = tilePack.ground_riverCorner.prefab; baseRotation = 0f; appliedRiverYOffset = tilePack.ground_riverCorner.yOffset; }
-                    else if (landE && landS && !landN && !landW) { selectedTile = tilePack.ground_riverCorner.prefab; baseRotation = 90f; appliedRiverYOffset = tilePack.ground_riverCorner.yOffset; }
-                    else if (landS && landW && !landN && !landE) { selectedTile = tilePack.ground_riverCorner.prefab; baseRotation = 180f; appliedRiverYOffset = tilePack.ground_riverCorner.yOffset; }
-                    else if (landW && landN && !landE && !landS) { selectedTile = tilePack.ground_riverCorner.prefab; baseRotation = 270f; appliedRiverYOffset = tilePack.ground_riverCorner.yOffset; }
-
-                    // Open/Inner Corner shores
-                    else if (!landN && !landE && !landS && !landW)
+                    if (landN || landNW)
                     {
-                        if (landNE) { selectedTile = tilePack.ground_riverSideOpen.prefab; baseRotation = 0f; appliedRiverYOffset = tilePack.ground_riverSideOpen.yOffset; }
-                        else if (landSE) { selectedTile = tilePack.ground_riverSideOpen.prefab; baseRotation = 90f; appliedRiverYOffset = tilePack.ground_riverSideOpen.yOffset; }
-                        else if (landSW) { selectedTile = tilePack.ground_riverSideOpen.prefab; baseRotation = 180f; appliedRiverYOffset = tilePack.ground_riverSideOpen.yOffset; }
-                        else if (landNW) { selectedTile = tilePack.ground_riverSideOpen.prefab; baseRotation = 270f; appliedRiverYOffset = tilePack.ground_riverSideOpen.yOffset; }
-                    }
-
-                    // Fallback configuration
-                    if (selectedTile == null)
-                    {
-                        selectedTile = tilePack.waterCenter.prefab;
-                        appliedRiverYOffset = tilePack.waterCenter.yOffset;
                         baseRotation = 0f;
                     }
+                    else if (landE || landNE)
+                    {
+                        baseRotation = 90f;
+                    }
+                    else if (landS || landSE)
+                    {
+                        baseRotation = 180f;
+                    }
+                    else if (landW || landSW)
+                    {
+                        baseRotation = 270f;
+                    }
 
-                    Vector3 riverSpawnPos = new Vector3(basePos.x, basePos.y + appliedRiverYOffset, basePos.z);
-                    float finalRotation = (baseRotation + (riverRotationOffsetSteps * 90f)) % 360f;
-                    SpawnVisual(selectedTile, riverSpawnPos, Quaternion.Euler(0, finalRotation, 0));
+                    if (selectedTile != null)
+                    {
+                        Vector3 riverSpawnPos = new Vector3(basePos.x, basePos.y + appliedRiverYOffset, basePos.z);
+                        float finalRotation = (baseRotation + (riverRotationOffsetSteps * 90f)) % 360f;
+                        SpawnVisual(selectedTile, riverSpawnPos, Quaternion.Euler(0, finalRotation, 0));
+                    }
 
                     // Build Saved Bridge
                     if (loadedSchema != null)
@@ -237,10 +302,11 @@ namespace ProceduralTerrain
                     }
                     else
                     {
-                        bool waterN = !landN; bool waterS = !landS; bool waterE = !landE; bool waterW = !landW;
-                        if (((!waterN && !waterS) && waterE && waterW) || ((!waterE && !waterW) && waterN && waterS))
+                        // Spawn physical bridge model on forced pathing nodes
+                        if (forcedBridgeCoordinates.Contains(pos))
                         {
-                            TryPlaceSmartBridge(x, y, basePos, (waterE && waterW));
+                            // Bridges run horizontally over our vertical meandering channel
+                            TryPlaceSmartBridge(x, y, basePos, isHorizontal: true);
                         }
                     }
                 }
@@ -317,13 +383,7 @@ namespace ProceduralTerrain
 
         private void TryPlaceSmartBridge(int x, int y, Vector3 pos, bool isHorizontal)
         {
-            if (tilePack.bridge_wood.prefab == null || Random.value > tilePack.bridge_wood.density) return;
-
-            foreach (Vector2Int bridgeCoord in spawnedBridgeCoordinates)
-            {
-                if (Vector2Int.Distance(new Vector2Int(x, y), bridgeCoord) < minBridgeSpacing)
-                    return;
-            }
+            if (tilePack.bridge_wood.prefab == null) return;
 
             float rotationY = isHorizontal ? 90f : 0f;
             Vector3 bridgePos = new Vector3(pos.x, pos.y + tilePack.bridge_wood.yOffset, pos.z);
@@ -350,7 +410,7 @@ namespace ProceduralTerrain
             return x >= 0 && x < width && y >= 0 && y < height;
         }
 
-        // --- EXPORT 2D ARRAY METHOD (Safely situated inside the Class boundaries) ---
+        // --- EXPORT 2D ARRAY METHOD ---
         public SimpleNodeData[,] ExportLightweight2DArray()
         {
             SimpleNodeData[,] dataMatrix = new SimpleNodeData[width, height];
