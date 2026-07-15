@@ -25,7 +25,9 @@ public class AStarAgent : MonoBehaviour
     // Cache the last calculated path to draw Scene-view Gizmos
     private Vector3[] _lastCalculatedPath = new Vector3[0];
 
-    void Start()
+    public bool HasValidHandle() => _agentHandle >= 0;
+
+    void Awake()
     {
         if (gridManager == null)
         {
@@ -33,10 +35,17 @@ public class AStarAgent : MonoBehaviour
             return;
         }
 
+        // Create the C++ agent during Awake
         _agentHandle = NativeBridge.CreateAgent(visionRange, canHear);
         Debug.Log($"[{name}] Created C++ Agent with Handle: {_agentHandle}");
+    }
 
-        UpdateVisionAtCurrentPosition();
+    void Start()
+    {
+        if (_agentHandle >= 0)
+        {
+            UpdateVisionAtCurrentPosition();
+        }
     }
 
     // Call this whenever the agent moves so a limited-vision agent
@@ -119,6 +128,16 @@ public class AStarAgent : MonoBehaviour
         {
             Gizmos.DrawLine(_lastCalculatedPath[i], _lastCalculatedPath[i + 1]);
             Gizmos.DrawSphere(_lastCalculatedPath[i], 0.15f); // Draw waypoint nodes
+        }
+    }
+
+    private void OnDestroy()
+    {
+        if (_agentHandle >= 0)
+        {
+            Debug.Log($"[{name}] Releasing native agent resources (Handle: {_agentHandle})...");
+            NativeBridge.DestroyAgent(_agentHandle);
+            _agentHandle = -1;
         }
     }
 }

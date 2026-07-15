@@ -39,6 +39,11 @@ public class NPCWanderer : MonoBehaviour
 
     private IEnumerator WanderLoop()
     {
+        while (_agent == null || !_agent.HasValidHandle())
+        {
+            yield return null;
+        }
+
         while (true)
         {
             Vector3[] path = null;
