@@ -16,6 +16,10 @@ namespace ProceduralTerrain
 
     public class PrimsTerrainGenerator : MonoBehaviour
     {
+        // Generate new map on SimulationEvent
+        private void OnEnable() => SimulationEvents.OnNewRandomMap += GenerateNewMap;
+        private void OnDisable() => SimulationEvents.OnNewRandomMap -= GenerateNewMap;
+
         [Header("Grid Scale Settings")]
         public int width = 50;
         public int height = 50;

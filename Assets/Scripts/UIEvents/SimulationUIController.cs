@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using UnityEngine.UI;
 using TMPro;    // TMP_Dropdown
 
-public class SimulationEvent : MonoBehaviour
+public class SimulationUIController : MonoBehaviour
 {
     // Map Operations
     [SerializeField] private Button RandomMapButton;
@@ -35,7 +35,7 @@ public class SimulationEvent : MonoBehaviour
         AgentTypeDropdown.ClearOptions();
         AgentTypeDropdown.AddOptions(new List<string> { "Blind", "Deaf", "Cripple" });
         AgentSelectDropdown.ClearOptions();
-        AgentTypeDropdown.AddOptions(new List<string> { "Select" });
+        AgentSelectDropdown.AddOptions(new List<string> { "Select" });
 
         // Agent buttons initial state: Greyed out
         SetAgentButtonsInteractable(false);    
@@ -95,6 +95,8 @@ public class SimulationEvent : MonoBehaviour
     private void RefreshDropdown()
     {
         var manager = Object.FindAnyObjectByType<AgentManager>();
+        if (manager == null) return; // Guard clause to prevent crash
+
         AgentSelectDropdown.ClearOptions();
 
         // Add "Select" as index 0 (Default)
