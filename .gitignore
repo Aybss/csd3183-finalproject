@@ -8,6 +8,10 @@
 [Mm]emoryCaptures/
 [Uu]serSettings/
 
+# Git LFS local workspace artifacts
+/[Ll]fs/
+/[Hh]ooks/
+
 ## Visual Studio / Rider / VS Code
 .vs/
 .idea/
