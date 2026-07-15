@@ -2,6 +2,20 @@ using System;
 using System.Collections.Generic;
 using UnityEngine;
 
+// Add these serializable classes at the bottom of your ObstacleGrid.cs file, or in a separate file.
+[System.Serializable]
+public class PropSaveEntry
+{
+    public string displayName; // Used to look up the correct prefab in PropLibrary
+    public Vector2Int baseCell;
+}
+
+[System.Serializable]
+public class GridSaveData
+{
+    public List<PropSaveEntry> savedProps = new List<PropSaveEntry>();
+}
+
 public class ObstacleGrid : MonoBehaviour
 {
     public static ObstacleGrid Instance { get; private set; }
@@ -30,6 +44,7 @@ public class ObstacleGrid : MonoBehaviour
         public GameObject instance;
         public Vector2Int cell;
         public Vector2Int footprint;
+        public string displayName; // Added to easily identify the prop during saving
     }
 
     private void Awake()
@@ -117,7 +132,8 @@ public class ObstacleGrid : MonoBehaviour
         {
             instance = instance,
             cell = baseCell,
-            footprint = entry.footprintSize
+            footprint = entry.footprintSize,
+            displayName = entry.displayName // Tracked for JSON mapping
         });
 
         OnGridChanged?.Invoke();
@@ -180,5 +196,38 @@ public class ObstacleGrid : MonoBehaviour
             result[i] = (byte)(_occupied[i] ? 1 : 0);
         }
         return result;
+    }
+
+    // ==========================================
+    // NEW SAVE/LOAD DATABASE COMPONENT HOOKS
+    // ==========================================
+
+    /// <summary>
+    /// Packages all currently placed items on the grid into a save layout.
+    /// </summary>
+    public GridSaveData GetSaveData()
+    {
+        GridSaveData data = new GridSaveData();
+        foreach (var p in _placedProps)
+        {
+            data.savedProps.Add(new PropSaveEntry
+            {
+                displayName = p.displayName,
+                baseCell = p.cell
+            });
+        }
+        return data;
+    }
+
+    /// <summary>
+    /// Clears the active scene grid completely.
+    /// </summary>
+    public void ClearGrid()
+    {
+        // Loop backwards to prevent collection modification errors
+        for (int i = _placedProps.Count - 1; i >= 0; i--)
+        {
+            RemoveProp(_placedProps[i].instance);
+        }
     }
 }
