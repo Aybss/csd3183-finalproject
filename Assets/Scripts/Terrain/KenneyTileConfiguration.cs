@@ -41,6 +41,9 @@ public struct KenneyTileConfiguration
     public SpawnConfiguration tree_small;
     public SpawnConfiguration tree_tall;
 
+    [Header("Resources")]
+    public SpawnConfiguration food;
+
     [Header("Stone & Geological Items")]
     public SpawnConfiguration platform_grass;
     public SpawnConfiguration rock_small_a;

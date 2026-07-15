@@ -23,6 +23,17 @@ public class AgentManager : MonoBehaviour
         OnAgentListChanged?.Invoke();
     }
 
+    // For a simulation restart: the agent GameObjects are being destroyed
+    // elsewhere (GridCoordinator owns that), this just clears the
+    // bookkeeping list and tells the dropdown to refresh. A raw
+    // activeAgents.Clear() from outside this class wouldn't raise
+    // OnAgentListChanged — C# only allows a class to invoke its own events.
+    public void ClearAllAgents()
+    {
+        activeAgents.Clear();
+        OnAgentListChanged?.Invoke();
+    }
+
     private void OnEnable() => SimulationEvents.OnRequestChangeAgentType += ModifyAgent;
     private void OnDisable() => SimulationEvents.OnRequestChangeAgentType -= ModifyAgent;
 

@@ -9,7 +9,7 @@ public class NativeBridgeTest : MonoBehaviour
 
         Debug.Log("[Test] Blocking a wall across column 5, rows 0-7 (leaving a gap at the top)...");
         for (int y = 0; y < 8; y++)
-            NativeBridge.SetBlocked(5, y, true);
+            NativeBridge.SetBlocked(5, y, 1);
 
         Debug.Log("[Test] Finding path from (0,0) to (9,9)...");
         var path = NativeBridge.FindPath(0, 0, 9, 9);
@@ -34,7 +34,7 @@ public class NativeBridgeTest : MonoBehaviour
     {
         Debug.Log("[Test] Creating a blind agent (role = 1) at (0,0)...");
         int blindHandle = NativeBridge.CreateAgent(1);
-        NativeBridge.UpdateAgentVision(blindHandle, 0, 0);
+        NativeBridge.AgentPerceive(blindHandle, 0, 0);
 
         Debug.Log("[Test] Blind agent plans toward (9,0) without having seen the wall yet...");
         var blindPlan = NativeBridge.FindAgentPath(blindHandle, 0, 0, 9, 0);
@@ -49,7 +49,7 @@ public class NativeBridgeTest : MonoBehaviour
         // Walk it forward, updating vision each step, until it "sees" the wall.
         foreach (var cell in blindPlan)
         {
-            NativeBridge.UpdateAgentVision(blindHandle, cell.x, cell.y);
+            NativeBridge.AgentPerceive(blindHandle, cell.x, cell.y);
             if (Mathf.Abs(cell.x - 5) <= 1)
             {
                 Debug.Log($"[Test] Blind agent at ({cell.x},{cell.y}) now perceives the wall. Replanning...");

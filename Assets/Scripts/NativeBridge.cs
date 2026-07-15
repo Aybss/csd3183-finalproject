@@ -1,162 +1,166 @@
-using System;
 using System.Collections.Generic;
 using System.Runtime.InteropServices;
 using UnityEngine;
+using ProceduralTerrain;
 
-/// <summary>
-/// P/Invoke bridge to the PathfinderCore native plugin (C++ DLL).
-/// </summary>
 public static class NativeBridge
 {
-    private const string DLL_NAME = "CooperativeMazeSurvival";
-    private const string CORE_DLL = "PathfinderCore";
+    private const string DllName = "PathfinderCore";
 
-    [DllImport(CORE_DLL, EntryPoint = "InitializeGrid", CallingConvention = CallingConvention.Cdecl)]
-    public static extern void InitializeGrid(int width, int height);
+    [DllImport(DllName, EntryPoint = "InitializeGrid", CallingConvention = CallingConvention.Cdecl)]
+    public static extern int Init(int width, int height);
 
-    [DllImport(CORE_DLL, EntryPoint = "SetCellBlocked", CallingConvention = CallingConvention.Cdecl)]
+    [DllImport(DllName, CallingConvention = CallingConvention.Cdecl)]
+    public static extern int InitializeGrid(int width, int height);
+
+    [DllImport(DllName, CallingConvention = CallingConvention.Cdecl)]
+    public static extern void LoadTerrainGrid(SimpleNodeData[] gridData, int width, int height);
+
+    [DllImport(DllName, EntryPoint = "SetCellBlocked", CallingConvention = CallingConvention.Cdecl)]
+    public static extern void SetBlocked(int x, int y, int blocked);
+
+    [DllImport(DllName, CallingConvention = CallingConvention.Cdecl)]
     public static extern void SetCellBlocked(int x, int y, int blocked);
 
-    // Changed signature parameter from IntPtr to byte[] to auto-marshal the array pointer
-    [DllImport(CORE_DLL, EntryPoint = "LoadObstacleData", CallingConvention = CallingConvention.Cdecl)]
-    public static extern void LoadObstacleData(byte[] data, int length);
+    [DllImport(DllName, CallingConvention = CallingConvention.Cdecl)]
+    public static extern void SetCellType(int x, int y, int cellType);
 
-    [DllImport(DLL_NAME, CallingConvention = CallingConvention.Cdecl)]
-    private static extern int FindPath(int startX, int startY, int endX, int endY,
-                                        int[] outX, int[] outY, int maxPathLength);
+    [DllImport(DllName, CallingConvention = CallingConvention.Cdecl)]
+    public static extern void SetCellWeight(int x, int y, float weight);
 
-    [DllImport(DLL_NAME, EntryPoint = "CreateAgent", CallingConvention = CallingConvention.Cdecl)]
-    public static extern int CreateAgentNative(int role);
+    [DllImport(DllName, CallingConvention = CallingConvention.Cdecl)]
+    public static extern int IsWalkable(int x, int y);
 
-    [DllImport(DLL_NAME, EntryPoint = "DestroyAgent", CallingConvention = CallingConvention.Cdecl)]
-    private static extern void DestroyAgentNative(int agentHandle);
+    [DllImport(DllName, CallingConvention = CallingConvention.Cdecl)]
+    public static extern int IsWalkableForAgent(int agentHandle, int x, int y);
 
-    [DllImport(DLL_NAME, EntryPoint = "IsAgentCellUnknown", CallingConvention = CallingConvention.Cdecl)]
-    private static extern int IsAgentCellUnknownNative(int agentHandle, int x, int y);
+    [DllImport(DllName, CallingConvention = CallingConvention.Cdecl)]
+    public static extern void SetBuildSitePosition(int x, int y);
 
-    [DllImport(DLL_NAME, EntryPoint = "SetCellType", CallingConvention = CallingConvention.Cdecl)]
-    private static extern void SetCellTypeNative(int x, int y, int cellType);
+    [DllImport(DllName, CallingConvention = CallingConvention.Cdecl)]
+    public static extern void SetCampPosition(int x, int y);
 
-    [DllImport(DLL_NAME, EntryPoint = "UpdateAgentVision", CallingConvention = CallingConvention.Cdecl)]
-    private static extern void UpdateAgentVisionNative(int agentHandle, int x, int y);
+    [DllImport(DllName, CallingConvention = CallingConvention.Cdecl)]
+    public static extern int CreateAgent(int role);
 
-    [DllImport(DLL_NAME, EntryPoint = "AddSoundCue", CallingConvention = CallingConvention.Cdecl)]
-    private static extern void AddSoundCueNative(float x, float y, float radius, float costPenalty);
+    [DllImport(DllName, CallingConvention = CallingConvention.Cdecl)]
+    public static extern void DestroyAgent(int agentHandle);
 
-    [DllImport(DLL_NAME, EntryPoint = "ClearSoundCues", CallingConvention = CallingConvention.Cdecl)]
-    private static extern void ClearSoundCuesNative();
+    // SLAM: clears fog-of-war around (x,y) for this agent (sight + hearing).
+    // Call every time the agent's grid position changes.
+    [DllImport(DllName, CallingConvention = CallingConvention.Cdecl)]
+    public static extern void AgentPerceive(int agentHandle, int x, int y);
 
-    [DllImport(DLL_NAME, CallingConvention = CallingConvention.Cdecl)]
-    private static extern int FindAgentPath(int agentHandle, int startX, int startY, int endX, int endY,
-                                             int[] outX, int[] outY, int maxPathLength);
+    // SLAM: merges both agents' explored-tile memory when they meet.
+    [DllImport(DllName, CallingConvention = CallingConvention.Cdecl)]
+    public static extern void TriggerSLAMSync(int agentHandleA, int agentHandleB);
 
-    /// <summary>Call once at startup, matching your ObstacleGrid's dimensions.</summary>
-    public static void Init(int width, int height)
+    // SLAM visualization: has this specific agent's own memory discovered
+    // this resource tile yet? biomeType 2=Wood, 3=Food, 4=Stone.
+    [DllImport(DllName, CallingConvention = CallingConvention.Cdecl)]
+    public static extern int IsResourceDiscoveredByAgent(int agentHandle, int biomeType, int x, int y);
+
+    [DllImport(DllName, CallingConvention = CallingConvention.Cdecl)]
+    public static extern void AddSoundCue(float x, float y, float radius, float costPenalty);
+
+    [DllImport(DllName, CallingConvention = CallingConvention.Cdecl)]
+    public static extern void ClearSoundCues();
+
+    // Group resource coordination: biomeType 2=Wood, 3=Food, 4=Stone.
+    [DllImport(DllName, CallingConvention = CallingConvention.Cdecl)]
+    public static extern int GetAvailableResource(int agentHandle, int biomeType, int agentX, int agentY, out int outX, out int outY);
+
+    [DllImport(DllName, CallingConvention = CallingConvention.Cdecl)]
+    public static extern void ReleaseResource(int biomeType, int x, int y);
+
+    [DllImport(DllName, CallingConvention = CallingConvention.Cdecl)]
+    public static extern void ClearResourceTile(int biomeType, int x, int y);
+
+    // GOAP: push the agent's current survival stats into its native Blackboard.
+    [DllImport(DllName, CallingConvention = CallingConvention.Cdecl)]
+    public static extern void SyncAgentBlackboard(int agentHandle, float hunger, float thirst, float fatigue,
+        int woodCarried, int maxWood, int stoneCarried, int maxStone);
+
+    // GOAP: ask the native planner what this agent should do next. Returns an
+    // AgentAction code (see Assets/Scripts/Agent/GOAP/AgentAction.cs); for
+    // Navigate* actions, outTargetX/Y is also populated with a reserved tile.
+    [DllImport(DllName, CallingConvention = CallingConvention.Cdecl)]
+    public static extern int PlanNextAction(int agentHandle, int agentX, int agentY, out int outTargetX, out int outTargetY);
+
+    [DllImport(DllName, CallingConvention = CallingConvention.Cdecl)]
+    private static extern int FindPath(int startX, int startY, int endX, int endY, int[] outX, int[] outY, int maxPathLength);
+
+    public static List<Vector2Int> FindPath(int startX, int startY, int endX, int endY)
     {
-        InitializeGrid(width, height);
-    }
-
-    /// <summary>Marks a single cell blocked/free in the native grid.</summary>
-    public static void SetBlocked(int x, int y, bool blocked)
-    {
-        SetCellBlocked(x, y, blocked ? 1 : 0);
-    }
-
-    /// <summary>Sets a custom environmental cell type.</summary>
-    public static void SetCellType(int x, int y, int cellType)
-    {
-        SetCellTypeNative(x, y, cellType);
-    }
-
-    /// <summary>Loads a full occupancy grid at once.</summary>
-    public static void LoadObstacles(byte[] occupancyData)
-    {
-        LoadObstacleData(occupancyData, occupancyData.Length);
-    }
-
-    /// <summary>Finds a path between two grid cells.</summary>
-    public static List<Vector2Int> FindPath(int startX, int startY, int endX, int endY, int maxPathLength = 4096)
-    {
+        int maxPathLength = 1024;
         int[] outX = new int[maxPathLength];
         int[] outY = new int[maxPathLength];
 
-        int result = FindPath(startX, startY, endX, endY, outX, outY, maxPathLength);
+        int length = FindPath(startX, startY, endX, endY, outX, outY, maxPathLength);
 
-        if (result < 0)
+        if (length <= 0) return new List<Vector2Int>();
+
+        List<Vector2Int> path = new List<Vector2Int>(length);
+        for (int i = 0; i < length; i++)
         {
-            if (result == -2)
-                Debug.LogWarning("[NativeBridge] Path found but exceeded maxPathLength — increase the buffer size.");
-            return null;
-        }
-
-        var path = new List<Vector2Int>(result);
-        for (int i = 0; i < result; i++)
             path.Add(new Vector2Int(outX[i], outY[i]));
-
+        }
         return path;
     }
 
-    /// <summary>Creates a new agent with its own sensory traits.</summary>
-    public static int CreateAgent(int role)
-    {
-        return CreateAgentNative(role);
-    }
+    [DllImport(DllName, CallingConvention = CallingConvention.Cdecl)]
+    private static extern int FindAgentPath(int agentHandle, int startX, int startY, int endX, int endY, int[] outX, int[] outY, int maxPathLength);
 
-    /// <summary>Destroys an agent by its handle and frees up memory.</summary>
-    public static void DestroyAgent(int agentHandle)
+    public static List<Vector2Int> FindAgentPath(int agentHandle, int startX, int startY, int endX, int endY)
     {
-        if (agentHandle < 0) return;
-        DestroyAgentNative(agentHandle);
-    }
-
-    /// <summary>Check if the cell is unknown to the agent.</summary>
-    public static bool IsAgentCellUnknown(int agentHandle, int x, int y)
-    {
-        if (agentHandle < 0) return false;
-        return IsAgentCellUnknownNative(agentHandle, x, y) != 0;
-    }
-
-    /// <summary>Reveals the world around (x, y) to the given agent.</summary>
-    public static void UpdateAgentVision(int agentHandle, int x, int y)
-    {
-        if (agentHandle < 0) return;
-        UpdateAgentVisionNative(agentHandle, x, y);
-    }
-
-    /// <summary>Registers a sound event in the world.</summary>
-    public static void AddSoundCue(float x, float y, float radius, float costPenalty)
-    {
-        AddSoundCueNative(x, y, radius, costPenalty);
-    }
-
-    /// <summary>Clears all currently-registered sound cues.</summary>
-    public static void ClearSoundCues()
-    {
-        ClearSoundCuesNative();
-    }
-
-    /// <summary>Plans a path using the given agent's own knowledge.</summary>
-    public static List<Vector2Int> FindAgentPath(int agentHandle, int startX, int startY, int endX, int endY,
-                                                 int maxPathLength = 4096)
-    {
-        if (agentHandle < 0) return null;
-
+        int maxPathLength = 1024;
         int[] outX = new int[maxPathLength];
         int[] outY = new int[maxPathLength];
 
-        int result = FindAgentPath(agentHandle, startX, startY, endX, endY, outX, outY, maxPathLength);
+        int length = FindAgentPath(agentHandle, startX, startY, endX, endY, outX, outY, maxPathLength);
 
-        if (result < 0)
+        if (length <= 0) return new List<Vector2Int>();
+
+        List<Vector2Int> path = new List<Vector2Int>(length);
+        for (int i = 0; i < length; i++)
         {
-            if (result == -2)
-                Debug.LogWarning("[NativeBridge] Agent path found but exceeded maxPathLength — increase the buffer size.");
-            return null;
+            path.Add(new Vector2Int(outX[i], outY[i]));
+        }
+        return path;
+    }
+
+    public static List<Vector2Int> FindAgentPath(int agentHandle, int startX, int startY, int endX, int endY, int ignoredParam)
+    {
+        return FindAgentPath(agentHandle, startX, startY, endX, endY);
+    }
+
+    // Prim's algorithm: builds a minimum-spanning-tree path network over the
+    // given points of interest. Returns edges as index pairs into (xs, ys).
+    [DllImport(DllName, CallingConvention = CallingConvention.Cdecl)]
+    private static extern int GeneratePathNetwork(int[] xs, int[] ys, int count, int[] outFromIdx, int[] outToIdx, int maxEdges);
+
+    public static List<(int fromIndex, int toIndex)> GeneratePathNetwork(List<Vector2Int> points)
+    {
+        var edges = new List<(int, int)>();
+        if (points == null || points.Count < 2) return edges;
+
+        int[] xs = new int[points.Count];
+        int[] ys = new int[points.Count];
+        for (int i = 0; i < points.Count; i++)
+        {
+            xs[i] = points[i].x;
+            ys[i] = points[i].y;
         }
 
-        var path = new List<Vector2Int>(result);
-        for (int i = 0; i < result; i++)
-            path.Add(new Vector2Int(outX[i], outY[i]));
+        int maxEdges = points.Count;
+        int[] outFrom = new int[maxEdges];
+        int[] outTo = new int[maxEdges];
 
-        return path;
+        int count = GeneratePathNetwork(xs, ys, points.Count, outFrom, outTo, maxEdges);
+        for (int i = 0; i < count; i++)
+        {
+            edges.Add((outFrom[i], outTo[i]));
+        }
+        return edges;
     }
 }

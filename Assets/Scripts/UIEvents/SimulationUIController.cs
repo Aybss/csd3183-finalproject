@@ -45,6 +45,21 @@ public class SimulationUIController : MonoBehaviour
         AgentManager.OnAgentListChanged += RefreshDropdown;
         AgentSelectDropdown.onValueChanged.AddListener(OnAgentSelected);
 
+        // These three never had listeners registered, so the buttons sat
+        // there doing nothing.
+        CreateAgentButton.onClick.AddListener(() => {
+            SimulationEvents.OnRequestCreateAgent?.Invoke();
+        });
+        ViewAgentButton.onClick.AddListener(() => {
+            SimulationEvents.OnRequestViewAgent?.Invoke(CurrentAgentIndex);
+        });
+        KillAgentButton.onClick.AddListener(() => {
+            SimulationEvents.OnRequestKillAgent?.Invoke(CurrentAgentIndex);
+        });
+        // OnAgentTypeChanged already existed but was never actually
+        // subscribed to the dropdown's change event.
+        AgentTypeDropdown.onValueChanged.AddListener(OnAgentTypeChanged);
+
         // Map operation events ------------------------------------------------------//
         // ---------------------------------------------------------------------------//
 

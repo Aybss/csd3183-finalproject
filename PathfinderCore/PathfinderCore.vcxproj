@@ -145,12 +145,23 @@
     <ClInclude Include="AStarGrid.h" />
     <ClInclude Include="framework.h" />
     <ClInclude Include="pch.h" />
+    <ClInclude Include="PathNetwork.h" />
+    <ClInclude Include="goap\WorldState.h" />
+    <ClInclude Include="goap\Action.h" />
+    <ClInclude Include="goap\AgentActions.h" />
+    <ClInclude Include="goap\GOAPPlanner.h" />
+    <ClInclude Include="spatial\MapLayer.h" />
+    <ClInclude Include="spatial\WorldGrid.h" />
+    <ClInclude Include="spatial\AgentMemory.h" />
+    <ClInclude Include="spatial\Perception.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Agent.cpp" />
     <ClCompile Include="AStarGrid.cpp" />
     <ClCompile Include="dllmain.cpp" />
     <ClCompile Include="PluginMain.cpp" />
+    <ClCompile Include="PathNetwork.cpp" />
+    <ClCompile Include="goap\GOAPPlanner.cpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

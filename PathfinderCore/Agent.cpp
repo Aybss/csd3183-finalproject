@@ -121,7 +121,8 @@ std::vector<PathNode> Agent::FindPath(int startX, int startY, int endX, int endY
             if (closed[nIndex]) continue;
 
             float baseMoveCost = (dx[i] != 0 && dy[i] != 0) ? diagonalCost : straightCost;
-            float moveCost = baseMoveCost + SoundPenaltyAt(nx, ny, activeSounds);
+            float weightedMoveCost = baseMoveCost * _world->GetCellWeight(nx, ny);
+            float moveCost = weightedMoveCost + SoundPenaltyAt(nx, ny, activeSounds);
             float tentativeG = gCost[current.index] + moveCost;
 
             if (gCost[nIndex] < 0.0f || tentativeG < gCost[nIndex])

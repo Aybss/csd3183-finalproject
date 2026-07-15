@@ -30,7 +30,7 @@ public class AStarGridManager : MonoBehaviour
     // Marks a single cell blocked/free directly.
     public void SetBlocked(int x, int y, bool blocked)
     {
-        NativeBridge.SetBlocked(x, y, blocked);
+        NativeBridge.SetBlocked(x, y, blocked ? 1 : 0);
     }
 
     // Example helper: scans world-space colliders on the given layer and
