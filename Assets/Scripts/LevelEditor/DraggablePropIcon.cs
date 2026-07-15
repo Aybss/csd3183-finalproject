@@ -24,6 +24,8 @@ public class DraggablePropIcon : MonoBehaviour, IBeginDragHandler, IDragHandler,
     {
         if (entry == null || entry.prefab == null) return;
 
+        FindObjectOfType<GridInteractionManager>()?.DisableDeleteMode();
+
         _ghostInstance = Instantiate(entry.prefab);
         _pivotToBottomOffset = GetPivotToBottomOffset(_ghostInstance);
         SetGhostVisuals(_ghostInstance);
@@ -48,8 +50,6 @@ public class DraggablePropIcon : MonoBehaviour, IBeginDragHandler, IDragHandler,
                 spawnPos.y = _ghostInstance.transform.position.y;
 
                 GameObject placed = Instantiate(entry.prefab, spawnPos, _ghostInstance.transform.rotation);
-
-                // Pass the direct cell coordinate to avoid centering rounding issues
                 ObstacleGrid.Instance.RegisterProp(placed, _currentHoveredCell, entry);
             }
         }

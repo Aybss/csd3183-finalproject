@@ -35,12 +35,19 @@ public class PaletteUI : MonoBehaviour
         }
 
         foreach (Transform child in contentParent)
-            Destroy(child.gameObject);
+        {
+            if (child.name != "DeleteModeButton")
+            {
+                Destroy(child.gameObject);
+            }
+        }
 
         foreach (var entry in library.props)
         {
             GameObject go = Instantiate(iconButtonPrefab, contentParent);
             go.name = "Icon_" + entry.displayName;
+
+            go.transform.SetAsLastSibling();
 
             Image img = go.GetComponentInChildren<Image>();
             if (img != null && entry.icon != null) img.sprite = entry.icon;
@@ -49,11 +56,23 @@ public class PaletteUI : MonoBehaviour
             if (tmpLabel != null)
             {
                 tmpLabel.text = entry.displayName;
+                tmpLabel.alignment = TextAlignmentOptions.Bottom;
+                tmpLabel.enableWordWrapping = true;
+                tmpLabel.overflowMode = TextOverflowModes.Overflow;
+                tmpLabel.enableAutoSizing = true;
+                tmpLabel.fontSizeMin = 8f;
+                tmpLabel.fontSizeMax = 14f;
             }
             else
             {
                 Text label = go.GetComponentInChildren<Text>();
-                if (label != null) label.text = entry.displayName;
+                if (label != null)
+                {
+                    label.text = entry.displayName;
+                    label.alignment = TextAnchor.LowerCenter;
+                    label.horizontalOverflow = HorizontalWrapMode.Wrap;
+                    label.verticalOverflow = VerticalWrapMode.Overflow;
+                }
             }
 
             DraggablePropIcon drag = go.GetComponent<DraggablePropIcon>();

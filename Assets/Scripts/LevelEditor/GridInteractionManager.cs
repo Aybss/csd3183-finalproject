@@ -6,6 +6,7 @@ public class GridInteractionManager : MonoBehaviour
     public LayerMask groundMask;
 
     private Camera _cam;
+    private bool _isDeleteMode = false;
 
     private void Start()
     {
@@ -14,25 +15,67 @@ public class GridInteractionManager : MonoBehaviour
 
     private void Update()
     {
-        // Right click down execution loop
+        if (_isDeleteMode)
+        {
+            HandleDeleteHoverVisual();
+        }
+
         if (Input.GetMouseButtonDown(1))
         {
-            Ray ray = _cam.ScreenPointToRay(Input.mousePosition);
-
-            // Approach A: Try standard physics detection first
-            if (Physics.Raycast(ray, out RaycastHit hit, 500f, groundMask))
+            ProcessDeletionInput();
+        }
+        else if (Input.GetMouseButtonDown(0) && _isDeleteMode)
+        {
+            if (!UnityEngine.EventSystems.EventSystem.current.IsPointerOverGameObject())
             {
-                ExecuteDeletionAtWorldPosition(hit.point);
+                ProcessDeletionInput();
             }
-            // Approach B: Fallback calculation if your floor layout has no collider component
-            else
+        }
+    }
+
+    private void HandleDeleteHoverVisual()
+    {
+        Ray ray = _cam.ScreenPointToRay(Input.mousePosition);
+
+        if (Physics.Raycast(ray, out RaycastHit hit, 500f, groundMask) && GridVisualizer.Instance != null)
+        {
+            Vector2Int hoveredCell = ObstacleGrid.Instance.WorldToCell(hit.point);
+            GridVisualizer.Instance.UpdatePreview(hoveredCell, Vector2Int.one, false);
+        }
+        else if (GridVisualizer.Instance != null)
+        {
+            GridVisualizer.Instance.ClearPreview();
+        }
+    }
+
+    public void EnableDeleteMode()
+    {
+        _isDeleteMode = true;
+        Debug.Log("[Interaction] Delete Mode Enabled via UI.");
+    }
+
+    public void DisableDeleteMode()
+    {
+        _isDeleteMode = false;
+        if (GridVisualizer.Instance != null) GridVisualizer.Instance.ClearPreview();
+        Debug.Log("[Interaction] Delete Mode Disabled.");
+    }
+
+    private void ProcessDeletionInput()
+    {
+        Ray ray = _cam.ScreenPointToRay(Input.mousePosition);
+
+        if (Physics.Raycast(ray, out RaycastHit hit, 500f, groundMask))
+        {
+            ExecuteDeletionAtWorldPosition(hit.point);
+        }
+        else
+        {
+            Plane groundPlane = new Plane(Vector3.up, ObstacleGrid.Instance.originWorldPos);
+            if (groundPlane.Raycast(ray, out float enterDistance))
             {
-                Plane groundPlane = new Plane(Vector3.up, ObstacleGrid.Instance.originWorldPos);
-                if (groundPlane.Raycast(ray, out float enterDistance))
-                {
-                    Vector3 intersectionPoint = ray.GetPoint(enterDistance);
-                    ExecuteDeletionAtWorldPosition(intersectionPoint);
-                }
+                Vector3 intersectionPoint = ray.GetPoint(enterDistance);
+                ExecuteDeletionAtWorldPosition(intersectionPoint);
             }
         }
     }
