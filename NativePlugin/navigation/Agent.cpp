@@ -8,15 +8,30 @@ int Agent::Index(int x, int y) const
     return x + y * _world->GetWidth();
 }
 
-void Agent::Init(AStarGrid* world, const AgentPerception& perception)
+void Agent::Init(AStarGrid* world, AgentRole role)
 {
     _world = world;
-    _perception = perception;
+    _role = role;
+
+    // Automatically configure physical perception profiles based on the assigned Role!
+    _perception.visionRange = -1; // Default: Fully sighted (-1)
+    _perception.canHear = true;   // Default: Can hear (true)
+
+    if (role == AgentRole::Blind)
+    {
+        _perception.visionRange = 1; // Blind agent only sees immediate adjacent tiles
+    }
+    else if (role == AgentRole::Deaf)
+    {
+        _perception.canHear = false; // Deaf agent ignores sound cues entirely
+    }
+
+    // Allocate memory map for SLAM tracking
     _known.assign(static_cast<size_t>(world->GetWidth()) * world->GetHeight(), CellKnowledge::Unknown);
 
     if (_perception.visionRange < 0)
     {
-        // Fully sighted: the agent already "knows" the whole grid layout
+        // Fully sighted agents (Deaf, Wheelchair, Cognitive) know the whole grid layout at start
         for (int y = 0; y < world->GetHeight(); y++)
         {
             for (int x = 0; x < world->GetWidth(); x++)

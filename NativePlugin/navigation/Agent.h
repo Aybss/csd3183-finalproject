@@ -53,7 +53,7 @@ enum class AgentRole : int
 class Agent
 {
 public:
-    void Init(AStarGrid* world, const AgentPerception& perception);
+    void Init(AStarGrid* world, AgentRole role);
 
     // Reveals the true state of cells around (x, y), out to
     // perception.visionRange, into this agent's own knowledge.
