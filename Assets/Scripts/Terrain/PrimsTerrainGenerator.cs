@@ -231,7 +231,7 @@ namespace ProceduralTerrain
                     PathfindingNode node = grid[x, y];
                     Vector3 basePos;
                     basePos.x = node.WorldPosition.x - width / 2;
-                    basePos.y = node.WorldPosition.y - cellSize;
+                    basePos.y = node.WorldPosition.y - cellSize / 2;
                     basePos.z = node.WorldPosition.z - height / 2;
 
                     Vector2Int pos = new Vector2Int(x, y);
