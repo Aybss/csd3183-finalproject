@@ -5,8 +5,7 @@
 #pragma once
 #include "spatial/WorldGrid.h"     
 #include "spatial/AgentMemory.h"   
-#include "goap/WorldState.h"       
-#include "core/AgentProfile.h"     
+#include "goap/WorldState.h"   
 #include <cmath>
 #include <algorithm>
 
@@ -57,24 +56,23 @@ inline bool CheckLineOfSight(int startR, int startC, int endR, int endC, const W
 }
 
 // THE BRIDGE FUNCTION: Converts your spatial calculations into GOAP strings
-inline WorldState InterpretSensoryData(int agentRow, int agentCol, const WorldGrid& world, const AgentMemory& memory) {
+inline WorldState InterpretSensoryData(int agentRow, int agentCol, const WorldGrid& world, const AgentMemory& memory, const AgentProfile& profile) {
     WorldState symbolicState;
 
-    // Default facts
     symbolicState.Set("ramp_nearby", false);
     symbolicState.Set("stairs_nearby", false);
     symbolicState.Set("tactile_paving_detected", false);
-    symbolicState.Set("crowd_present", false); // Can be tied to an occupancy layer later
+    symbolicState.Set("crowd_present", false);
 
-    // Scan a local radius around the agent to flip GOAP preconditions based on real spatial layout
-    int checkRadius = 3; 
+    // Use your teammate's dynamic sightRadius parameter!
+    int checkRadius = profile.sightRadius;
+
     for (int r = -checkRadius; r <= checkRadius; ++r) {
         for (int c = -checkRadius; c <= checkRadius; ++c) {
             int targetR = agentRow + r;
             int targetC = agentCol + c;
 
             if (targetR >= 0 && targetR < world.height && targetC >= 0 && targetC < world.width) {
-                // If a feature exists in the world map, check if it's within line of sight
                 if (CheckLineOfSight(agentRow, agentCol, targetR, targetC, world)) {
                     if (world.stairLayer.at(targetR, targetC)) {
                         symbolicState.Set("stairs_nearby", true);

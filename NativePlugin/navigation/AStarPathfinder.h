@@ -1,7 +1,7 @@
 // AStarPathfinder.h
 #pragma once
 #include "spatial/WorldGrid.h"
-#include "core/AgentProfile.h"
+#include "goap/WorldState.h"
 #include <vector>
 
 // Simple struct to hold coordinate results

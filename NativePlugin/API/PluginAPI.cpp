@@ -1,7 +1,7 @@
 // PluginAPI.cpp
 #include "spatial/WorldGrid.h"
 #include "navigation/AStarPathfinder.h"
-#include "core/AgentProfile.h"
+#include "goap/WorldState.h"
 
 #define EXPORT_API extern "C" __declspec(dllexport)
 
