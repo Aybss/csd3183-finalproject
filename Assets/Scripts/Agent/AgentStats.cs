@@ -19,7 +19,7 @@ public class AgentStats : MonoBehaviour
         if (isDead) return;
 
         thirst += 2.0f * Time.deltaTime;
-        hunger += 1.5f * Time.deltaTime;
+        hunger += 0.8f * Time.deltaTime; // was 1.5 — hit critical/death too fast to demo GOAP behavior over time
         fatigue += 1.0f * Time.deltaTime;
 
         if (hunger >= 100f || thirst >= 100f) Die();
@@ -27,8 +27,10 @@ public class AgentStats : MonoBehaviour
 
     private void Die()
     {
+        // Stay in the scene as a visible "crossed out" corpse (see
+        // AgentDeathVisual) instead of vanishing — AgentGOAP and UnityAgent
+        // both check isDead and stop acting/moving once it's true.
         isDead = true;
-        Destroy(gameObject);
     }
 
     public void DrinkWater() => thirst = Mathf.Max(0f, thirst - 80f);

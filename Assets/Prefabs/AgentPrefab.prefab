@@ -15,6 +15,7 @@ GameObject:
   - component: {fileID: 10820174773814084}
   - component: {fileID: 268556025124533697}
   - component: {fileID: 55005876942023545}
+  - component: {fileID: 2613372578222664809}
   m_Layer: 0
   m_Name: AgentPrefab
   m_TagString: Untagged
@@ -107,7 +108,7 @@ CapsuleCollider:
   m_Enabled: 1
   serializedVersion: 2
   m_Radius: 0.5
-  m_Height: 2
+  m_Height: 0
   m_Direction: 1
   m_Center: {x: 0, y: 0, z: 0}
 --- !u!54 &10820174773814084
@@ -149,12 +150,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: e87155d9cb49d6548845f36e7ee15083, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  hunger: 0
-  hungerRate: 1.5
-  fatigue: 0
-  fatigueRate: 1
-  woodCarrying: 0
-  maxWoodCapacity: 3
 --- !u!114 &55005876942023545
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -171,3 +166,23 @@ MonoBehaviour:
   role: 0
   movementSpeed: 5
   cellSize: 1
+--- !u!114 &2613372578222664809
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3399024424742787505}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 240c8e895bdaab84fb874924ed55014b, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  thirst: 0
+  hunger: 0
+  fatigue: 0
+  woodCarrying: 0
+  maxWoodCapacity: 3
+  stoneCarrying: 0
+  maxStoneCapacity: 3
+  isDead: 0

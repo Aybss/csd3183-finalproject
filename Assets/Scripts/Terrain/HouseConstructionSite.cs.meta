@@ -3,7 +3,10 @@ guid: 41f86f8d734eba4469587c487efc7bb0
 MonoImporter:
   externalObjects: {}
   serializedVersion: 2
-  defaultReferences: []
+  defaultReferences:
+  - houseFinishedModel: {fileID: 919132149155446097, guid: 5e1b6ac4efc141646996c42365f83009, type: 3}
+  - constructionScaffolding: {fileID: 919132149155446097, guid: c66b18dcc4c4bef47b82d27dd2d265d8, type: 3}
+  - houseHalfBuiltModel: {fileID: 919132149155446097, guid: 9e508a08208d9ee45b7d00cba0104bea, type: 3}
   executionOrder: 0
   icon: {instanceID: 0}
   userData: 

@@ -465,6 +465,19 @@ extern "C" {
         return FindAndReserveResource(agentHandle, biomeType, agentX, agentY, outX, outY) ? 1 : 0;
     }
 
+    // Lets Unity visualize SLAM directly: query whether a specific agent's
+    // own memory has discovered a given resource tile yet, so a "fog of war
+    // lifting" beacon can be shown/hidden per agent instead of SLAM staying
+    // an invisible internal data structure.
+    __declspec(dllexport) int IsResourceDiscoveredByAgent(int agentHandle, int biomeType, int x, int y)
+    {
+        if (agentHandle < 0 || agentHandle >= static_cast<int>(g_agentMemories.size())) return 0;
+        if (x < 0 || x >= g_worldGrid.width || y < 0 || y >= g_worldGrid.height) return 0;
+
+        AgentMemory& mem = g_agentMemories[agentHandle];
+        return MemoryLayerForType(mem, biomeType).at(y, x) ? 1 : 0;
+    }
+
     __declspec(dllexport) void ReleaseResource(int biomeType, int x, int y)
     {
         MapLayer<int>& reserved = ReservationLayerForType(biomeType);

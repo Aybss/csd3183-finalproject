@@ -1,5 +1,4 @@
 using UnityEngine;
-using TMPro;
 
 // Mirrors PathfinderCore/goap's AgentRole (0=WheelchairBound, 1=Blind, 2=Deaf).
 public enum AgentRoleType
@@ -11,12 +10,12 @@ public enum AgentRoleType
 
 // Builds each agent's role visuals procedurally from primitives — the bundled
 // Kenney asset packs have no character/wheelchair models, so this is color +
-// attached shapes + a floating label instead of custom art:
+// attached shapes instead of custom art:
 //   WheelchairBound: blue tint, flattened "wheel disc" base, squashed torso.
 //   Blind:           red tint, dark blindfold band across the head.
 //   Deaf:            orange tint, two ear-cover spheres.
-// Every agent also gets a world-space label showing its role and current
-// GOAP action, updated live from AgentGOAP.
+// Role, action, hunger, and fatigue are all shown in the AgentOverlayUI
+// screen-space panel instead of a floating world-space label.
 public static class ImpairmentVisuals
 {
     private static readonly Color WheelchairColor = new Color(0.25f, 0.45f, 0.95f);
@@ -24,7 +23,7 @@ public static class ImpairmentVisuals
     private static readonly Color DeafColor = new Color(0.95f, 0.6f, 0.1f);
     private static readonly Color AccessoryColor = new Color(0.08f, 0.08f, 0.08f);
 
-    public static void Apply(GameObject agentObject, AgentRoleType role)
+    public static void Apply(GameObject agentObject, AgentRoleType role, float cellSize)
     {
         Color roleColor = ColorForRole(role);
         TintBody(agentObject, roleColor);
@@ -45,7 +44,25 @@ public static class ImpairmentVisuals
                 break;
         }
 
-        AddLabel(agentObject, role, height);
+        AddSightRing(agentObject, roleColor, height, SightRadiusForRole(role) * cellSize);
+        AddStatusBars(agentObject, height);
+
+        agentObject.AddComponent<AgentDeathVisual>();
+    }
+
+    // Mirrors PathfinderCore/goap/WorldState.h's AgentProfile factories
+    // (MakeBlind/MakeWheelchairUser/MakeDeaf sightRadius) — this duplication
+    // is purely cosmetic for the ring; the real vision/SLAM sweep is computed
+    // natively via AgentPerceive using those same numbers.
+    private static int SightRadiusForRole(AgentRoleType role)
+    {
+        switch (role)
+        {
+            case AgentRoleType.Blind: return 1;
+            case AgentRoleType.WheelchairBound: return 5;
+            case AgentRoleType.Deaf: return 7;
+            default: return 5;
+        }
     }
 
     private static Color ColorForRole(AgentRoleType role)
@@ -59,7 +76,8 @@ public static class ImpairmentVisuals
         }
     }
 
-    private static string LabelForRole(AgentRoleType role)
+    // Public so AgentOverlayUI's screen-space list can show the same names.
+    public static string LabelForRole(AgentRoleType role)
     {
         switch (role)
         {
@@ -127,27 +145,48 @@ public static class ImpairmentVisuals
             new Vector3(0.45f, height * 0.4f, 0f), new Vector3(0.22f, 0.22f, 0.22f));
     }
 
-    private static void AddLabel(GameObject agentObject, AgentRoleType role, float height)
+    // A thin ground-level ring showing how far this agent can actually see —
+    // makes the sensing difference between roles (Blind's tiny radius vs.
+    // Deaf's wide one) immediately visible, and doubles as an intuitive
+    // stand-in for "this is roughly the area SLAM adds to its memory as it
+    // walks around."
+    private static void AddSightRing(GameObject agentObject, Color color, float capsuleHeight, float radius)
     {
-        GameObject labelObj = new GameObject("RoleLabel");
-        labelObj.transform.SetParent(agentObject.transform, false);
-        labelObj.transform.localPosition = new Vector3(0f, height * 0.75f + 0.6f, 0f);
+        GameObject ringObj = new GameObject("SightRing");
+        ringObj.transform.SetParent(agentObject.transform, false);
+        ringObj.transform.localPosition = new Vector3(0f, -capsuleHeight * 0.5f + 0.05f, 0f);
 
-        TextMeshPro tmp = labelObj.AddComponent<TextMeshPro>();
-        tmp.text = LabelForRole(role);
-        tmp.fontSize = 3f;
-        tmp.alignment = TextAlignmentOptions.Center;
-        tmp.color = Color.white;
-        tmp.rectTransform.sizeDelta = new Vector2(3f, 1f);
+        const int segments = 40;
+        LineRenderer line = ringObj.AddComponent<LineRenderer>();
+        line.useWorldSpace = false;
+        line.loop = true;
+        line.positionCount = segments;
+        line.widthMultiplier = 0.08f;
+        line.material = new Material(Shader.Find("Sprites/Default"));
+        line.startColor = color;
+        line.endColor = color;
+        line.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+        line.receiveShadows = false;
 
-        labelObj.AddComponent<BillboardToCamera>();
-
-        AgentGOAP goap = agentObject.GetComponent<AgentGOAP>();
-        if (goap != null)
+        Vector3[] points = new Vector3[segments];
+        for (int i = 0; i < segments; i++)
         {
-            RoleActionLabel updater = labelObj.AddComponent<RoleActionLabel>();
-            updater.Initialize(tmp, goap, LabelForRole(role));
+            float angle = (i / (float)segments) * Mathf.PI * 2f;
+            points[i] = new Vector3(Mathf.Cos(angle) * radius, 0f, Mathf.Sin(angle) * radius);
         }
+        line.SetPositions(points);
+    }
+
+    private static void AddStatusBars(GameObject agentObject, float height)
+    {
+        AgentStats stats = agentObject.GetComponent<AgentStats>();
+        if (stats == null) return;
+
+        GameObject barsAnchor = new GameObject("StatusBarsAnchor");
+        ScaleCompensation.Attach(barsAnchor, agentObject.transform, Vector3.zero);
+
+        AgentStatusBars bars = barsAnchor.AddComponent<AgentStatusBars>();
+        bars.Initialize(stats, height * 0.75f + 0.25f);
     }
 }
 
@@ -158,33 +197,5 @@ public class BillboardToCamera : MonoBehaviour
     {
         if (Camera.main == null) return;
         transform.forward = transform.position - Camera.main.transform.position;
-    }
-}
-
-// Refreshes the floating label with the agent's live GOAP action so it
-// doubles as an in-scene debug readout during a demo.
-public class RoleActionLabel : MonoBehaviour
-{
-    private TextMeshPro label;
-    private AgentGOAP goap;
-    private string roleName;
-    private AgentAction lastAction;
-    private bool initialized;
-
-    public void Initialize(TextMeshPro label, AgentGOAP goap, string roleName)
-    {
-        this.label = label;
-        this.goap = goap;
-        this.roleName = roleName;
-    }
-
-    private void Update()
-    {
-        if (label == null || goap == null) return;
-        if (initialized && goap.CurrentAction == lastAction) return;
-
-        lastAction = goap.CurrentAction;
-        initialized = true;
-        label.text = $"{roleName}\n{lastAction}";
     }
 }

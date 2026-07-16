@@ -55,6 +55,11 @@ public static class NativeBridge
     [DllImport(DllName, CallingConvention = CallingConvention.Cdecl)]
     public static extern void TriggerSLAMSync(int agentHandleA, int agentHandleB);
 
+    // SLAM visualization: has this specific agent's own memory discovered
+    // this resource tile yet? biomeType 2=Wood, 3=Food, 4=Stone.
+    [DllImport(DllName, CallingConvention = CallingConvention.Cdecl)]
+    public static extern int IsResourceDiscoveredByAgent(int agentHandle, int biomeType, int x, int y);
+
     [DllImport(DllName, CallingConvention = CallingConvention.Cdecl)]
     public static extern void AddSoundCue(float x, float y, float radius, float costPenalty);
 

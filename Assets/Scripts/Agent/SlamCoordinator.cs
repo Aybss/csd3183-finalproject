@@ -13,6 +13,8 @@ public class SlamCoordinator : MonoBehaviour
     [Tooltip("How often to check agent pairs, in seconds. Doesn't need to be every frame.")]
     public float checkInterval = 0.5f;
 
+    private static readonly Color FlashColor = new Color(0.3f, 1f, 0.6f);
+
     private float timer = 0f;
 
     private void Update()
@@ -36,8 +38,62 @@ public class SlamCoordinator : MonoBehaviour
                 if (distSqr <= radiusSqr)
                 {
                     NativeBridge.TriggerSLAMSync(agents[i].agentHandle, agents[j].agentHandle);
+                    SpawnSyncFlash(agents[i].transform.position, agents[j].transform.position);
                 }
             }
         }
+    }
+
+    // A brief line between two agents the instant their memory merges — SLAM
+    // sharing knowledge is otherwise an invisible internal data operation.
+    private void SpawnSyncFlash(Vector3 from, Vector3 to)
+    {
+        GameObject flashObj = new GameObject("SlamSyncFlash");
+        LineRenderer line = flashObj.AddComponent<LineRenderer>();
+        line.useWorldSpace = true;
+        line.positionCount = 2;
+        line.SetPosition(0, from + Vector3.up * 1.5f);
+        line.SetPosition(1, to + Vector3.up * 1.5f);
+        line.widthMultiplier = 0.06f;
+        line.material = new Material(Shader.Find("Sprites/Default"));
+        line.startColor = FlashColor;
+        line.endColor = FlashColor;
+        line.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+        line.receiveShadows = false;
+
+        SlamSyncFlashFade fade = flashObj.AddComponent<SlamSyncFlashFade>();
+        fade.duration = 0.6f;
+    }
+}
+
+// Fades a SLAM sync flash line out over its lifetime, then removes itself.
+public class SlamSyncFlashFade : MonoBehaviour
+{
+    public float duration = 0.6f;
+
+    private float elapsed;
+    private LineRenderer line;
+
+    private void Start()
+    {
+        line = GetComponent<LineRenderer>();
+    }
+
+    private void Update()
+    {
+        elapsed += Time.deltaTime;
+
+        if (line != null)
+        {
+            float alpha = 1f - Mathf.Clamp01(elapsed / duration);
+            Color start = line.startColor;
+            Color end = line.endColor;
+            start.a = alpha;
+            end.a = alpha;
+            line.startColor = start;
+            line.endColor = end;
+        }
+
+        if (elapsed >= duration) Destroy(gameObject);
     }
 }

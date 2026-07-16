@@ -18,8 +18,11 @@ public class AgentGOAP : MonoBehaviour
 
     private int mapWidth = 50;
     private int mapHeight = 50;
+    private bool deathCleanupDone = false;
 
-    // Exposed for ImpairmentVisuals' floating label.
+    // Read by AgentOverlayUI to show what each agent's GOAP planner actually
+    // decided to do this tick — the one concrete, live signal that GOAP is
+    // really driving behavior and not just a hardcoded routine.
     public AgentAction CurrentAction => currentAction;
 
     private void Start()
@@ -37,7 +40,22 @@ public class AgentGOAP : MonoBehaviour
 
     private void Update()
     {
-        if (stats.isDead) return;
+        if (stats.isDead)
+        {
+            // Release any resource this agent had claimed but never reached —
+            // otherwise a mid-task death permanently locks that tile away
+            // from the rest of the group.
+            if (!deathCleanupDone)
+            {
+                deathCleanupDone = true;
+                if (hasDestination && reservedBiomeType != -1)
+                {
+                    NativeBridge.ReleaseResource(reservedBiomeType, currentTargetTile.x, currentTargetTile.y);
+                }
+                hasDestination = false;
+            }
+            return;
+        }
 
         if (startDelayTimer > 0f)
         {

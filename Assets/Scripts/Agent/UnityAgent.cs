@@ -15,6 +15,7 @@ public class UnityAgent : MonoBehaviour
     private Vector2Int lastGridPosition = new Vector2Int(-1, -1);
 
     private Rigidbody rb;
+    private AgentStats stats;
 
     // Cached so we can defensively reject/clamp any waypoint that falls outside
     // the actual map, regardless of what the native pathfinder hands back.
@@ -25,6 +26,7 @@ public class UnityAgent : MonoBehaviour
     {
         rb = GetComponent<Rigidbody>();
         rb.freezeRotation = true;
+        stats = GetComponent<AgentStats>();
 
         var generator = GameObject.FindObjectOfType<ProceduralTerrain.PrimsTerrainGenerator>();
         if (generator != null)
@@ -33,8 +35,6 @@ public class UnityAgent : MonoBehaviour
             mapHeight = generator.height;
         }
 
-        // Kinematic bodies ignore gravity, so unlike before, this won't fall onto the
-        // floor collider on its own � snap it down explicitly at spawn instead.
         SnapToGround();
 
         // Movement is fully authored via MovePosition/MoveRotation in FixedUpdate.
@@ -44,19 +44,20 @@ public class UnityAgent : MonoBehaviour
         // sends the agent drifting in a straight line forever. Kinematic removes that
         // failure mode entirely while still letting other colliders detect it.
         rb.isKinematic = true;
+        // Belt-and-suspenders: lock the Y axis outright so nothing (a future
+        // change to isKinematic, a stray force, another script) can ever
+        // move the agent vertically.
+        rb.constraints = RigidbodyConstraints.FreezePositionY;
     }
 
     private void SnapToGround()
     {
-        CapsuleCollider capsule = GetComponent<CapsuleCollider>();
-        float halfHeight = capsule != null ? capsule.height * 0.5f * transform.lossyScale.y : 1f;
-
-        if (Physics.Raycast(transform.position + Vector3.up * 50f, Vector3.down, out RaycastHit hit, 500f))
-        {
-            Vector3 pos = transform.position;
-            pos.y = hit.point.y + halfHeight;
-            transform.position = pos;
-        }
+        // Collider/ground-height math kept getting this wrong for this
+        // prefab's actual pivot/collider setup. Flat, simple, and correct in
+        // practice: spawn position plus a fixed clearance.
+        Vector3 pos = transform.position;
+        pos.y += 0.1f;
+        transform.position = pos;
     }
 
     public void Initialize(int handle, int roleType, float size)
@@ -65,7 +66,7 @@ public class UnityAgent : MonoBehaviour
         role = roleType;
         cellSize = size;
 
-        ImpairmentVisuals.Apply(gameObject, (AgentRoleType)roleType);
+        ImpairmentVisuals.Apply(gameObject, (AgentRoleType)roleType, size);
     }
 
     public bool SetNewDestination(Vector2Int start, Vector2Int destination)
@@ -114,6 +115,7 @@ public class UnityAgent : MonoBehaviour
 
     private void FixedUpdate()
     {
+        if (stats != null && stats.isDead) return; // freeze in place — AgentDeathVisual shows the cross-out
         if (currentPath == null || currentPathIndex >= currentPath.Count) return;
 
         Vector2Int targetGridPos = currentPath[currentPathIndex];
