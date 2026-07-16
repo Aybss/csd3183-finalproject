@@ -11,6 +11,7 @@ void AStarGrid::Init(int width, int height)
     size_t size = static_cast<size_t>(width) * height;
     _blocked.assign(size, false);
     _cellTypes.assign(size, 0); // Default all cells to Type 0 (Free)
+    _cellWeight.assign(size, 1.0f); // Default all cells to normal cost
 }
 
 void AStarGrid::SetBlocked(int x, int y, bool blocked)
@@ -36,6 +37,18 @@ int AStarGrid::GetCellType(int x, int y) const
 {
     if (!IsInBounds(x, y)) return 1; // Out of bounds behaves as Blocked (Type 1)
     return _cellTypes[Index(x, y)];
+}
+
+void AStarGrid::SetCellWeight(int x, int y, float weight)
+{
+    if (!IsInBounds(x, y)) return;
+    _cellWeight[Index(x, y)] = weight > 0.0f ? weight : 1.0f;
+}
+
+float AStarGrid::GetCellWeight(int x, int y) const
+{
+    if (!IsInBounds(x, y)) return 1.0f;
+    return _cellWeight[Index(x, y)];
 }
 
 void AStarGrid::LoadFromBytes(const unsigned char* data, int length)
@@ -144,7 +157,11 @@ std::vector<PathNode> AStarGrid::FindPath(int startX, int startY, int endX, int 
             int nIndex = Index(nx, ny);
             if (closed[nIndex]) continue;
 
-            float moveCost = (dx[i] != 0 && dy[i] != 0) ? diagonalCost : straightCost;
+            float baseMoveCost = (dx[i] != 0 && dy[i] != 0) ? diagonalCost : straightCost;
+            // Weighted A*: entering a high-cost tile (e.g. rough terrain) costs
+            // more than entering a low-cost one (e.g. a built path), so the
+            // search prefers cheaper routes even when they're longer in tiles.
+            float moveCost = baseMoveCost * _cellWeight[nIndex];
             float tentativeG = gCost[current.index] + moveCost;
 
             if (gCost[nIndex] < 0.0f || tentativeG < gCost[nIndex])

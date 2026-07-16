@@ -1,5 +1,5 @@
 using UnityEngine;
-using System.Collections.Generic;
+using ProceduralTerrain;
 
 [RequireComponent(typeof(UnityAgent))]
 [RequireComponent(typeof(AgentStats))]
@@ -9,22 +9,25 @@ public class AgentGOAP : MonoBehaviour
     private AgentStats stats;
 
     private Vector2Int currentTargetTile = new Vector2Int(-1, -1);
-    private string currentAction = "Idle";
+    private AgentAction currentAction = AgentAction.ExploreUnknown;
+    private bool hasDestination = false;
+    private int reservedBiomeType = -1; // BiomeType of currentTargetTile if it was a claimed resource, else -1
 
     private float startDelayTimer = 3.0f;
     private float thoughtCooldown = 0f;
-    private bool isActivated = false;
 
-    private List<Vector2Int> unreachableTiles = new List<Vector2Int>();
     private int mapWidth = 50;
     private int mapHeight = 50;
+
+    // Exposed for ImpairmentVisuals' floating label.
+    public AgentAction CurrentAction => currentAction;
 
     private void Start()
     {
         movementController = GetComponent<UnityAgent>();
         stats = GetComponent<AgentStats>();
 
-        var generator = Object.FindObjectOfType<ProceduralTerrain.PrimsTerrainGenerator>();
+        var generator = Object.FindObjectOfType<PrimsTerrainGenerator>();
         if (generator != null)
         {
             mapWidth = generator.width;
@@ -48,135 +51,207 @@ public class AgentGOAP : MonoBehaviour
             return;
         }
 
-        int currentX = Mathf.RoundToInt(transform.position.x / movementController.cellSize);
-        int currentY = Mathf.RoundToInt(transform.position.z / movementController.cellSize);
-        Vector2Int currentGridPos = new Vector2Int(currentX, currentY);
+        Vector2Int currentGridPos = GetCurrentGridPos();
 
-        if (currentGridPos == currentTargetTile && currentTargetTile != new Vector2Int(-1, -1))
+        if (hasDestination && currentGridPos == currentTargetTile)
         {
-            ExecuteAtDestination();
-            currentTargetTile = new Vector2Int(-1, -1);
-            currentAction = "Idle";
+            hasDestination = false; // arrived — next tick's plan will pick the follow-up action
         }
 
-        if (currentTargetTile == new Vector2Int(-1, -1))
+        if (!hasDestination)
         {
-            PlanNextAction(currentGridPos);
+            DecideAndAct(currentGridPos);
         }
     }
 
-    private void PlanNextAction(Vector2Int currentGridPos)
+    private Vector2Int GetCurrentGridPos()
     {
-        if (stats.thirst > 75f) NavigateToResource(currentGridPos, 1, "Drinking");
-        else if (stats.hunger > 80f) NavigateToResource(currentGridPos, 3, "Eating");
-        else if (stats.fatigue > 85f) NavigateToCamp(currentGridPos);
-        else if (stats.woodCarrying > 0) NavigateToBuildSite(currentGridPos);
-        else NavigateToResource(currentGridPos, 2, "Chopping");
+        int x = Mathf.RoundToInt(transform.position.x / movementController.cellSize);
+        int y = Mathf.RoundToInt(transform.position.z / movementController.cellSize);
+        return new Vector2Int(x, y);
     }
 
-    private void ExecuteAtDestination()
+    private void DecideAndAct(Vector2Int currentGridPos)
     {
-        switch (currentAction)
+        NativeBridge.SyncAgentBlackboard(
+            movementController.agentHandle,
+            stats.hunger, stats.thirst, stats.fatigue,
+            stats.woodCarrying, stats.maxWoodCapacity,
+            stats.stoneCarrying, stats.maxStoneCapacity);
+
+        int actionCode = NativeBridge.PlanNextAction(
+            movementController.agentHandle, currentGridPos.x, currentGridPos.y,
+            out int targetX, out int targetY);
+
+        currentAction = (AgentAction)actionCode;
+
+        if (IsNavigateAction(currentAction))
         {
-            case "Drinking": stats.DrinkWater(); break;
-            case "Eating":
+            Vector2Int target = new Vector2Int(
+                Mathf.Clamp(targetX, 0, mapWidth - 1),
+                Mathf.Clamp(targetY, 0, mapHeight - 1));
+
+            reservedBiomeType = BiomeTypeForNavigateAction(currentAction);
+
+            if (target == currentGridPos)
+            {
+                // Nothing reachable to navigate to (e.g. explore with no
+                // better target) — treat this tick as a short wander instead
+                // of spinning in place.
+                Wander(currentGridPos);
+                return;
+            }
+
+            if (movementController.SetNewDestination(currentGridPos, target))
+            {
+                currentTargetTile = target;
+                hasDestination = true;
+            }
+            else
+            {
+                if (reservedBiomeType != -1) NativeBridge.ReleaseResource(reservedBiomeType, target.x, target.y);
+                Wander(currentGridPos);
+            }
+        }
+        else
+        {
+            // Stationary action — the planner only returns these once the
+            // native WorldState already sees the agent standing on the right
+            // tile, so execute immediately without moving.
+            ExecuteStationaryAction(currentAction, currentGridPos);
+            thoughtCooldown = 0.15f; // avoid a same-frame replan loop
+        }
+    }
+
+    private bool IsNavigateAction(AgentAction action)
+    {
+        switch (action)
+        {
+            case AgentAction.ExploreUnknown:
+            case AgentAction.NavigateToWood:
+            case AgentAction.NavigateToFood:
+            case AgentAction.NavigateToStone:
+            case AgentAction.NavigateToWater:
+            case AgentAction.NavigateToBuildSite:
+            case AgentAction.NavigateToCamp:
+                return true;
+            default:
+                return false;
+        }
+    }
+
+    private int BiomeTypeForNavigateAction(AgentAction action)
+    {
+        switch (action)
+        {
+            case AgentAction.NavigateToWood: return (int)BiomeType.Wood;
+            case AgentAction.NavigateToFood: return (int)BiomeType.Food;
+            case AgentAction.NavigateToStone: return (int)BiomeType.Stone;
+            default: return -1; // water/build-site/camp/explore aren't reserved resources
+        }
+    }
+
+    private void ExecuteStationaryAction(AgentAction action, Vector2Int pos)
+    {
+        switch (action)
+        {
+            case AgentAction.Eat:
                 stats.ConsumeFood();
-                DestroyResourceAt(currentTargetTile);
+                HarvestResourceAt(pos, BiomeType.Food);
                 break;
-            case "Sleeping": stats.Rest(); break;
-            case "Building":
+            case AgentAction.CollectWood:
+                stats.woodCarrying = stats.maxWoodCapacity;
+                HarvestResourceAt(pos, BiomeType.Wood);
+                break;
+            case AgentAction.MineStone:
+                stats.stoneCarrying = stats.maxStoneCapacity;
+                HarvestResourceAt(pos, BiomeType.Stone);
+                break;
+            case AgentAction.DrinkWater:
+                stats.DrinkWaterInstant();
+                break;
+            case AgentAction.Rest:
+                stats.Rest();
+                break;
+            case AgentAction.DeliverWood:
                 if (HouseConstructionSite.Instance != null) HouseConstructionSite.Instance.DepositWood(stats.woodCarrying);
                 stats.woodCarrying = 0;
                 break;
-            case "Chopping":
-                stats.woodCarrying = stats.maxWoodCapacity;
-                DestroyResourceAt(currentTargetTile);
+            case AgentAction.DeliverStone:
+                if (HouseConstructionSite.Instance != null) HouseConstructionSite.Instance.DepositStone(stats.stoneCarrying);
+                stats.stoneCarrying = 0;
+                break;
+            case AgentAction.DetectFoodBySound:
+                // No direct gameplay effect — food discovery already happens
+                // via the hearing sweep inside NativeBridge.AgentPerceive.
+                // Standing still for a beat is the "listening" this represents.
                 break;
         }
     }
 
-    private void NavigateToResource(Vector2Int startPos, int biomeType, string actionName)
+    // Destroys the visual prop at `pos` and tells native the tile is depleted
+    // (clears the WorldGrid layer + every agent's stale memory of it, and
+    // frees the reservation so nobody's stuck waiting on a gone resource).
+    private void HarvestResourceAt(Vector2Int pos, BiomeType type)
     {
-        Vector2Int target = GetNearestResource(startPos, biomeType);
+        NativeBridge.ClearResourceTile((int)type, pos.x, pos.y);
 
-        // Clamp to prevent out-of-bounds pathing requests to the DLL[cite: 11]
-        target.x = Mathf.Clamp(target.x, 0, mapWidth - 1);
-        target.y = Mathf.Clamp(target.y, 0, mapHeight - 1);
+        var generator = Object.FindObjectOfType<PrimsTerrainGenerator>();
+        if (generator == null) return;
 
-        if (target == new Vector2Int(-1, -1)) { Wander(startPos); return; }
-
-        currentTargetTile = target;
-        currentAction = actionName;
-
-        if (!movementController.SetNewDestination(startPos, currentTargetTile))
+        string needle = type switch
         {
-            unreachableTiles.Add(currentTargetTile);
-            Wander(startPos);
-        }
-    }
-
-    private Vector2Int GetNearestResource(Vector2Int startPos, int resourceType)
-    {
-        Vector2Int target = new Vector2Int(-1, -1);
-        float minDistance = float.MaxValue;
-
-        var generator = Object.FindObjectOfType<ProceduralTerrain.PrimsTerrainGenerator>();
-        if (generator == null) return target;
+            BiomeType.Wood => "tree",
+            BiomeType.Food => "food",
+            BiomeType.Stone => null, // rock_tall_a/b, stone_large_a/b — matched by generic fallback below
+            _ => null
+        };
 
         foreach (Transform child in generator.transform)
         {
-            bool isTarget = (resourceType == 2 && child.name.ToLower().Contains("tree")) ||
-                            (resourceType == 3 && child.name.ToLower().Contains("bush"));
+            Vector2Int childPos = new Vector2Int(
+                Mathf.RoundToInt(child.position.x / generator.cellSize),
+                Mathf.RoundToInt(child.position.z / generator.cellSize));
 
-            if (isTarget)
-            {
-                Vector2Int pos = new Vector2Int(Mathf.RoundToInt(child.position.x), Mathf.RoundToInt(child.position.z));
-                float dist = Vector2Int.Distance(startPos, pos);
-                if (dist < minDistance && !unreachableTiles.Contains(pos))
-                {
-                    minDistance = dist;
-                    target = pos;
-                }
-            }
-        }
-        return target;
-    }
+            if (Vector2Int.Distance(childPos, pos) > 1.0f) continue;
 
-    private void DestroyResourceAt(Vector2Int pos)
-    {
-        var generator = Object.FindObjectOfType<ProceduralTerrain.PrimsTerrainGenerator>();
-        foreach (Transform child in generator.transform)
-        {
-            if (Mathf.RoundToInt(child.position.x) == pos.x && Mathf.RoundToInt(child.position.z) == pos.y)
+            bool nameMatches = needle != null
+                ? child.name.ToLower().Contains(needle)
+                : (child.name.ToLower().Contains("rock_tall") || child.name.ToLower().Contains("stone_large"));
+
+            if (nameMatches)
             {
                 Destroy(child.gameObject);
-                break;
+                NativeBridge.SetBlocked(pos.x, pos.y, 0);
+                return;
             }
         }
     }
 
     private void Wander(Vector2Int startPos)
     {
-        currentTargetTile = new Vector2Int(
-            Mathf.Clamp(startPos.x + Random.Range(-3, 4), 0, mapWidth - 1),
-            Mathf.Clamp(startPos.y + Random.Range(-3, 4), 0, mapHeight - 1)
-        );
-        currentAction = "Wandering";
-        movementController.SetNewDestination(startPos, currentTargetTile);
+        currentAction = AgentAction.ExploreUnknown;
+
+        // Sample a few random nearby offsets and only commit to one that's
+        // actually walkable — avoids spamming a pathfind failure (and its
+        // Debug.LogError) every time a blind random offset lands on water.
+        const int maxAttempts = 5;
+        for (int attempt = 0; attempt < maxAttempts; attempt++)
+        {
+            Vector2Int target = new Vector2Int(
+                Mathf.Clamp(startPos.x + Random.Range(-3, 4), 0, mapWidth - 1),
+                Mathf.Clamp(startPos.y + Random.Range(-3, 4), 0, mapHeight - 1));
+
+            if (target == startPos) continue;
+            if (NativeBridge.IsWalkableForAgent(movementController.agentHandle, target.x, target.y) == 0) continue;
+
+            if (movementController.SetNewDestination(startPos, target))
+            {
+                currentTargetTile = target;
+                hasDestination = true;
+                break;
+            }
+        }
         thoughtCooldown = 0.5f;
-    }
-
-    private void NavigateToCamp(Vector2Int startPos)
-    {
-        currentTargetTile = new Vector2Int(2, 2);
-        currentAction = "Sleeping";
-        if (!movementController.SetNewDestination(startPos, currentTargetTile)) Wander(startPos);
-    }
-
-    private void NavigateToBuildSite(Vector2Int startPos)
-    {
-        currentTargetTile = new Vector2Int(15, 15);
-        currentAction = "Building";
-        if (!movementController.SetNewDestination(startPos, currentTargetTile)) Wander(startPos);
     }
 }

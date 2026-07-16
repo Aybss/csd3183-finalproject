@@ -22,6 +22,12 @@ public:
     void SetCellType(int x, int y, int cellType);
     int GetCellType(int x, int y) const;
 
+    // Per-cell movement cost multiplier (1.0 = normal). Fed from Unity's
+    // PathfindingNode.MovementWeight via LoadTerrainGrid. This is what makes
+    // A* actually "weighted" instead of uniform-cost.
+    void SetCellWeight(int x, int y, float weight);
+    float GetCellWeight(int x, int y) const;
+
     // Bulk-loads an occupancy grid from a flat byte array
     // (0 = free, non-zero = blocked).
     void LoadFromBytes(const unsigned char* data, int length);
@@ -41,6 +47,7 @@ private:
     int _height = 0;
     std::vector<bool> _blocked;
     std::vector<int> _cellTypes; // Parallel vector tracking unique terrain types
+    std::vector<float> _cellWeight; // Parallel vector tracking per-tile movement cost multiplier
 
     int Index(int x, int y) const { return x + y * _width; }
 };

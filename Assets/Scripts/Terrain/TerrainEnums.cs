@@ -5,7 +5,8 @@ namespace ProceduralTerrain
         Grass,
         Water,
         Wood,
-        Food
+        Food,
+        Stone
     }
 
     // Explicit asset catalog index to track exactly what prop is sitting on a tile

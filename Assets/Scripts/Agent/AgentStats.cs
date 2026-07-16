@@ -6,9 +6,11 @@ public class AgentStats : MonoBehaviour
     public float hunger = 0f;
     public float fatigue = 0f;
 
-    // Add these variables:
     public int woodCarrying = 0;
     public int maxWoodCapacity = 3;
+
+    public int stoneCarrying = 0;
+    public int maxStoneCapacity = 3;
 
     public bool isDead = false;
 
@@ -32,4 +34,8 @@ public class AgentStats : MonoBehaviour
     public void DrinkWater() => thirst = Mathf.Max(0f, thirst - 80f);
     public void ConsumeFood() => hunger = Mathf.Max(0f, hunger - 60f);
     public void Rest() => fatigue = Mathf.Max(0f, fatigue - 80f);
+
+    // Standing at a river/pond edge quenches thirst on the spot — no carrying,
+    // no trip back to camp required.
+    public void DrinkWaterInstant() => thirst = Mathf.Max(0f, thirst - 80f);
 }

@@ -8,6 +8,9 @@ public class HouseConstructionSite : MonoBehaviour
     public int woodRequired = 30; // Total wood needed to finish building the house
     public int currentWoodDeposited = 0;
 
+    public int stoneRequired = 15; // Total stone needed to finish building the house
+    public int currentStoneDeposited = 0;
+
     [Header("Visual Representation")]
     public GameObject houseFinishedModel; // Drag a house prefab or simple cube here
     public GameObject constructionScaffolding; // Visual indicator of progress
@@ -26,9 +29,22 @@ public class HouseConstructionSite : MonoBehaviour
         if (isFinished) return;
 
         currentWoodDeposited = Mathf.Min(currentWoodDeposited + amount, woodRequired);
-        Debug.Log($"[Construction] Wood Delivered! Current Progress: {currentWoodDeposited}/{woodRequired}");
+        Debug.Log($"[Construction] Wood Delivered! Current Progress: {currentWoodDeposited}/{woodRequired} wood, {currentStoneDeposited}/{stoneRequired} stone");
+        CheckCompletion();
+    }
 
-        if (currentWoodDeposited >= woodRequired)
+    public void DepositStone(int amount)
+    {
+        if (isFinished) return;
+
+        currentStoneDeposited = Mathf.Min(currentStoneDeposited + amount, stoneRequired);
+        Debug.Log($"[Construction] Stone Delivered! Current Progress: {currentWoodDeposited}/{woodRequired} wood, {currentStoneDeposited}/{stoneRequired} stone");
+        CheckCompletion();
+    }
+
+    private void CheckCompletion()
+    {
+        if (currentWoodDeposited >= woodRequired && currentStoneDeposited >= stoneRequired)
         {
             CompleteConstruction();
         }

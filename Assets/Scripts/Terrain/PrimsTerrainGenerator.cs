@@ -70,6 +70,7 @@ namespace ProceduralTerrain
             ClearActiveMap();
             GenerateNaturalPlains();
             ConstructVisualGrid();
+            MarkRubbleAroundStoneDeposits();
 
             // Generate the physical collider bounds of the map once built
             CreateGlobalFloorCollider();
@@ -365,27 +366,47 @@ namespace ProceduralTerrain
 
         private void EvaluateAndSpawnStandardProps(int x, int y, Vector3 basePos)
         {
+            // The list now includes 'food' with density 0.01f and yOffset 1.0f 
+            // (Ensure you set these in the Inspector for your tilePack asset!)
             List<(SpawnConfiguration config, bool useRandRot)> spawnList = new List<(SpawnConfiguration, bool)>()
-            {
-                (tilePack.path, false),
-                (tilePack.tent_a, true), (tilePack.tent_b, true),
-                (tilePack.statue_obelisk, false), (tilePack.log_stack, true),
-                (tilePack.bush, true), (tilePack.mushroom, true),
-                (tilePack.crop_wheat, false), (tilePack.crop_berries, false),
-                (tilePack.tree_large, true), (tilePack.tree_small, true), (tilePack.tree_tall, true),
-                (tilePack.platform_grass, false),
-                (tilePack.rock_small_a, true), (tilePack.rock_small_b, true),
-                (tilePack.rock_tall_a, true), (tilePack.rock_tall_b, true),
-                (tilePack.stone_large_a, true), (tilePack.stone_large_b, true)
-            };
+    {
+        (tilePack.food, false), // NEW: Food added first
+        (tilePack.path, false),
+        (tilePack.tent_a, true), (tilePack.tent_b, true),
+        (tilePack.statue_obelisk, false), (tilePack.log_stack, true),
+        (tilePack.bush, true), (tilePack.mushroom, true),
+        (tilePack.crop_wheat, false), (tilePack.crop_berries, false),
+        (tilePack.tree_large, true), (tilePack.tree_small, true), (tilePack.tree_tall, true),
+        (tilePack.platform_grass, false),
+        (tilePack.rock_small_a, true), (tilePack.rock_small_b, true),
+        (tilePack.rock_tall_a, true), (tilePack.rock_tall_b, true),
+        (tilePack.stone_large_a, true), (tilePack.stone_large_b, true)
+    };
 
             foreach (var item in spawnList)
             {
-                if (item.config.prefab != null && Random.value < item.config.density)
+                // Defaulting density to 0.01f if not specifically configured
+                float density = (item.config.density <= 0) ? 0.01f : item.config.density;
+
+                if (item.config.prefab != null && Random.value < density)
                 {
-                    Vector3 spawnPosition = new Vector3(basePos.x, basePos.y + item.config.yOffset, basePos.z);
+                    // Defaulting yOffset to 1.0f if not specifically configured
+                    float offset = (item.config.yOffset == 0) ? 1.0f : item.config.yOffset;
+
+                    Vector3 spawnPosition = new Vector3(basePos.x, basePos.y + offset, basePos.z);
                     float yRot = item.useRandRot ? Random.Range(0f, 360f) : 0f;
+
                     SpawnVisual(item.config.prefab, spawnPosition, Quaternion.Euler(0, yRot, 0));
+
+                    // Name the object so AgentGOAP can identify it for destruction
+                    GameObject lastSpawned = spawnedVisualObjects[spawnedVisualObjects.Count - 1];
+                    lastSpawned.name = item.config.prefab.name;
+
+                    // Tag the underlying grid tile so the native WorldGrid (SLAM +
+                    // GOAP resource layers) actually knows a resource is here —
+                    // previously these props were purely decorative.
+                    grid[x, y].Type = ResolveResourceBiome(item.config.prefab);
+
                     return;
                 }
             }
@@ -418,6 +439,103 @@ namespace ProceduralTerrain
         private bool IsInsideBounds(int x, int y)
         {
             return x >= 0 && x < width && y >= 0 && y < height;
+        }
+
+        // Maps a spawned prop back to the resource biome it represents, so the
+        // native WorldGrid's wood/food/stone layers reflect what's actually on
+        // the ground instead of staying empty.
+        private BiomeType ResolveResourceBiome(GameObject prefab)
+        {
+            if (prefab == tilePack.food.prefab) return BiomeType.Food;
+
+            if (prefab == tilePack.tree_large.prefab || prefab == tilePack.tree_small.prefab || prefab == tilePack.tree_tall.prefab)
+                return BiomeType.Wood;
+
+            if (prefab == tilePack.rock_tall_a.prefab || prefab == tilePack.rock_tall_b.prefab ||
+                prefab == tilePack.stone_large_a.prefab || prefab == tilePack.stone_large_b.prefab)
+                return BiomeType.Stone;
+
+            return BiomeType.Grass;
+        }
+
+        // Tiles adjacent to a Stone deposit are rough/rubble ground: walkable
+        // for everyone except WheelchairBound agents (native CellType 2, see
+        // Agent::FindPath). Marked here as a decorative small-rock ring so the
+        // constraint is visually obvious, not just a hidden pathing rule.
+        private HashSet<Vector2Int> rubbleCoordinates = new HashSet<Vector2Int>();
+        public IReadOnlyCollection<Vector2Int> RubbleTiles => rubbleCoordinates;
+
+        private void MarkRubbleAroundStoneDeposits()
+        {
+            rubbleCoordinates.Clear();
+            List<Vector2Int> stoneTiles = new List<Vector2Int>();
+
+            for (int x = 0; x < width; x++)
+                for (int y = 0; y < height; y++)
+                    if (grid[x, y].Type == BiomeType.Stone)
+                        stoneTiles.Add(new Vector2Int(x, y));
+
+            foreach (Vector2Int stonePos in stoneTiles)
+            {
+                for (int dx = -1; dx <= 1; dx++)
+                {
+                    for (int dy = -1; dy <= 1; dy++)
+                    {
+                        if (dx == 0 && dy == 0) continue;
+                        Vector2Int pos = new Vector2Int(stonePos.x + dx, stonePos.y + dy);
+                        if (!IsInsideBounds(pos.x, pos.y)) continue;
+                        if (grid[pos.x, pos.y].Type != BiomeType.Grass) continue;
+                        if (rubbleCoordinates.Contains(pos)) continue;
+                        if (Random.value >= 0.5f) continue;
+
+                        rubbleCoordinates.Add(pos);
+
+                        SpawnConfiguration rubbleConfig = (Random.value < 0.5f) ? tilePack.rock_small_a : tilePack.rock_small_b;
+                        if (rubbleConfig.prefab != null)
+                        {
+                            Vector3 basePos = grid[pos.x, pos.y].WorldPosition;
+                            float offset = (rubbleConfig.yOffset == 0) ? 1.0f : rubbleConfig.yOffset;
+                            Vector3 spawnPos = new Vector3(basePos.x, basePos.y + offset, basePos.z);
+                            SpawnVisual(rubbleConfig.prefab, spawnPos, Quaternion.Euler(0, Random.Range(0f, 360f), 0));
+                        }
+                    }
+                }
+            }
+        }
+
+        // --- QUERIES + MUTATION FOR PrimsPathNetworkBuilder ---
+
+        public BiomeType GetBiomeAt(int x, int y)
+        {
+            return IsInsideBounds(x, y) ? grid[x, y].Type : BiomeType.Water;
+        }
+
+        public List<Vector2Int> FindResourceTiles(BiomeType type)
+        {
+            List<Vector2Int> tiles = new List<Vector2Int>();
+            for (int x = 0; x < width; x++)
+                for (int y = 0; y < height; y++)
+                    if (grid[x, y].Type == type)
+                        tiles.Add(new Vector2Int(x, y));
+            return tiles;
+        }
+
+        // Lowers a tile's movement cost and, on plain grass, lays down a
+        // visible path prop — used by PrimsPathNetworkBuilder to rasterize the
+        // MST edges Prim's algorithm produces into an actually-cheaper route.
+        public void ApplyPathTile(int x, int y)
+        {
+            if (!IsInsideBounds(x, y)) return;
+            if (grid[x, y].Type == BiomeType.Water) return; // rivers are crossed via bridges, not paving
+
+            grid[x, y].MovementWeight = 0.4f;
+
+            if (grid[x, y].Type == BiomeType.Grass && tilePack.path.prefab != null)
+            {
+                Vector3 basePos = grid[x, y].WorldPosition;
+                float offset = (tilePack.path.yOffset == 0) ? 0f : tilePack.path.yOffset;
+                SpawnVisual(tilePack.path.prefab, new Vector3(basePos.x, basePos.y + offset, basePos.z), Quaternion.identity);
+            }
         }
 
         // --- EXPORT CONTIGUOUS 1D FLAT ARRAY FOR C++ ---

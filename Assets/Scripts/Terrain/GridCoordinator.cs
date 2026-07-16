@@ -25,8 +25,24 @@ public class GridCoordinator : MonoBehaviour
         // 2. Sync Unity grid layout data directly with the C++ DLL
         SyncProceduralGridWithNative();
 
-        // 3. Spawn multiple agents staggered across the grid starting area
+        // 3. Build a Prim's-algorithm path network connecting camp, build
+        //    site, and resource clusters (lowers their movement weight).
+        Vector2Int buildSiteGridPos = GetBuildSiteGridPosition();
+        PrimsPathNetworkBuilder.BuildNetwork(terrainGenerator, spawnBaseCoordinates, buildSiteGridPos);
+
+        // 4. Spawn multiple agents staggered across the grid starting area
         SpawnMultipleAgents();
+    }
+
+    private Vector2Int GetBuildSiteGridPosition()
+    {
+        if (HouseConstructionSite.Instance == null) return new Vector2Int(15, 15);
+
+        float size = terrainGenerator.cellSize;
+        Transform site = HouseConstructionSite.Instance.transform;
+        return new Vector2Int(
+            Mathf.RoundToInt(site.position.x / size),
+            Mathf.RoundToInt(site.position.z / size));
     }
 
     public void SyncProceduralGridWithNative()
@@ -38,6 +54,18 @@ public class GridCoordinator : MonoBehaviour
 
         SimpleNodeData[] flatGridData = terrainGenerator.ExportContiguousFlatArray();
         NativeBridge.LoadTerrainGrid(flatGridData, w, h);
+
+        // Rubble tiles near stone deposits are impassable for WheelchairBound
+        // agents only (native CellType 2) — tag them after the bulk terrain
+        // load, which resets every cell's type to free/blocked.
+        foreach (Vector2Int rubble in terrainGenerator.RubbleTiles)
+        {
+            NativeBridge.SetCellType(rubble.x, rubble.y, 2);
+        }
+
+        NativeBridge.SetCampPosition(spawnBaseCoordinates.x, spawnBaseCoordinates.y);
+        Vector2Int buildSiteGridPos = GetBuildSiteGridPosition();
+        NativeBridge.SetBuildSitePosition(buildSiteGridPos.x, buildSiteGridPos.y);
 
         Debug.Log($"[GridCoordinator] Successfully synced {flatGridData.Length} tiles with PathfinderCore DLL.");
     }

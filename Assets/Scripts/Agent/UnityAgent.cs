@@ -34,13 +34,13 @@ public class UnityAgent : MonoBehaviour
         }
 
         // Kinematic bodies ignore gravity, so unlike before, this won't fall onto the
-        // floor collider on its own — snap it down explicitly at spawn instead.
+        // floor collider on its own ï¿½ snap it down explicitly at spawn instead.
         SnapToGround();
 
         // Movement is fully authored via MovePosition/MoveRotation in FixedUpdate.
         // A non-kinematic body still responds to real physics impulses (e.g. several
         // agents overlapping at the same resource/build tile), and MovePosition never
-        // cancels that residual velocity — with zero drag it never decays, so one shove
+        // cancels that residual velocity ï¿½ with zero drag it never decays, so one shove
         // sends the agent drifting in a straight line forever. Kinematic removes that
         // failure mode entirely while still letting other colliders detect it.
         rb.isKinematic = true;
@@ -64,13 +64,15 @@ public class UnityAgent : MonoBehaviour
         agentHandle = handle;
         role = roleType;
         cellSize = size;
+
+        ImpairmentVisuals.Apply(gameObject, (AgentRoleType)roleType);
     }
 
     public bool SetNewDestination(Vector2Int start, Vector2Int destination)
     {
         if (!IsInMapBounds(destination))
         {
-            Debug.LogError($"[UnityAgent] Rejected destination {destination} — outside the {mapWidth}x{mapHeight} grid.");
+            Debug.LogError($"[UnityAgent] Rejected destination {destination} ï¿½ outside the {mapWidth}x{mapHeight} grid.");
             return false;
         }
 
@@ -78,7 +80,12 @@ public class UnityAgent : MonoBehaviour
 
         if (path == null || path.Count == 0)
         {
-            Debug.LogError($"C++ PATHFINDER FAILED: No path from {start} to {destination}");
+            // Not a bug: a wander target or a stale resource tile can easily be
+            // unreachable (river with no nearby bridge, rubble-boxed pocket for
+            // a wheelchair-bound agent, etc). Every caller already checks this
+            // return value and retries/falls back â€” a warning is enough, and
+            // keeps the Editor's "Error Pause" from halting a normal outcome.
+            Debug.LogWarning($"[UnityAgent] No path from {start} to {destination} â€” will retry.");
             return false;
         }
 
@@ -89,7 +96,7 @@ public class UnityAgent : MonoBehaviour
         {
             if (!IsInMapBounds(node))
             {
-                Debug.LogError($"[UnityAgent] Native path contained out-of-bounds node {node} — discarding path.");
+                Debug.LogError($"[UnityAgent] Native path contained out-of-bounds node {node} ï¿½ discarding path.");
                 return false;
             }
         }
@@ -112,7 +119,7 @@ public class UnityAgent : MonoBehaviour
         Vector2Int targetGridPos = currentPath[currentPathIndex];
         Vector3 targetWorldPos = new Vector3(targetGridPos.x * cellSize, rb.position.y, targetGridPos.y * cellSize);
 
-        // Move via Rigidbody so gravity and collisions actually apply — this is
+        // Move via Rigidbody so gravity and collisions actually apply ï¿½ this is
         // what keeps the agent on solid ground and stops it at obstacles/other agents.
         Vector3 newPos = Vector3.MoveTowards(rb.position, targetWorldPos, movementSpeed * Time.fixedDeltaTime);
         rb.MovePosition(newPos);
@@ -125,15 +132,10 @@ public class UnityAgent : MonoBehaviour
         {
             if (agentHandle >= 0)
             {
-                try
-                {
-                    NativeBridge.UpdateAgentVision(agentHandle, currentX, currentY);
-                }
-                catch (System.EntryPointNotFoundException)
-                {
-                    // Native build doesn't export vision/SLAM tracking (yet) — safe to skip,
-                    // but must not be allowed to abort the rest of this method every frame.
-                }
+                // SLAM: clears fog-of-war around the agent's new tile (sight
+                // radius from its role's AgentProfile, plus hearing range for
+                // food) and records it in that agent's own AgentMemory.
+                NativeBridge.AgentPerceive(agentHandle, currentX, currentY);
             }
             lastGridPosition = currentGridPos;
         }

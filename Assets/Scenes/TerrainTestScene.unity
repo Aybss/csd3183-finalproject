@@ -349,6 +349,10 @@ MonoBehaviour:
       prefab: {fileID: 0}
       density: 0.01
       yOffset: 1
+    food:
+      prefab: {fileID: 919132149155446097, guid: a70dd2d0a57768a4d8604224e850296b, type: 3}
+      density: 0
+      yOffset: 0
     platform_grass:
       prefab: {fileID: 919132149155446097, guid: 382cd261c70b5f146bc2b4dade7ff8f3, type: 3}
       density: 0.01
