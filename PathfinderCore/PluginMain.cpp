@@ -478,6 +478,26 @@ extern "C" {
         return MemoryLayerForType(mem, biomeType).at(y, x) ? 1 : 0;
     }
 
+    // Bulk fog-of-war query for a full-map visualization: one call returns
+    // this agent's entire exploredTiles bitmap (row-major, index = y*width+x,
+    // matching MapLayer's own flat layout) instead of needing width*height
+    // individual IsResourceDiscoveredByAgent-style calls every refresh.
+    __declspec(dllexport) int GetExploredTiles(int agentHandle, unsigned char* outBuffer, int bufferSize)
+    {
+        if (agentHandle < 0 || agentHandle >= static_cast<int>(g_agentMemories.size())) return 0;
+        if (outBuffer == nullptr) return 0;
+
+        AgentMemory& mem = g_agentMemories[agentHandle];
+        int total = mem.exploredTiles.get_width() * mem.exploredTiles.get_height();
+        int count = (total < bufferSize) ? total : bufferSize;
+
+        for (int i = 0; i < count; ++i)
+        {
+            outBuffer[i] = mem.exploredTiles[i] ? 1 : 0;
+        }
+        return count;
+    }
+
     __declspec(dllexport) void ReleaseResource(int biomeType, int x, int y)
     {
         MapLayer<int>& reserved = ReservationLayerForType(biomeType);

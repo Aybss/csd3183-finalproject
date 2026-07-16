@@ -60,6 +60,25 @@ public static class NativeBridge
     [DllImport(DllName, CallingConvention = CallingConvention.Cdecl)]
     public static extern int IsResourceDiscoveredByAgent(int agentHandle, int biomeType, int x, int y);
 
+    // Bulk fog-of-war query: one call returns an agent's whole exploredTiles
+    // bitmap (row-major, index = y*width+x) instead of one call per tile.
+    [DllImport(DllName, CallingConvention = CallingConvention.Cdecl)]
+    private static extern int GetExploredTiles(int agentHandle, byte[] outBuffer, int bufferSize);
+
+    public static bool[] GetExploredTiles(int agentHandle, int width, int height)
+    {
+        int total = width * height;
+        byte[] buffer = new byte[total];
+        int count = GetExploredTiles(agentHandle, buffer, total);
+
+        bool[] result = new bool[total];
+        for (int i = 0; i < count; i++)
+        {
+            result[i] = buffer[i] != 0;
+        }
+        return result;
+    }
+
     [DllImport(DllName, CallingConvention = CallingConvention.Cdecl)]
     public static extern void AddSoundCue(float x, float y, float radius, float costPenalty);
 

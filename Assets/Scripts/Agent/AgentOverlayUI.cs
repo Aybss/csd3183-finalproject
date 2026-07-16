@@ -75,10 +75,11 @@ public class AgentOverlayUI : MonoBehaviour
         BuildUI();
         RescanAgents();
 
-        // Piggyback the SLAM beacon visualizer onto this same GameObject so
-        // selecting an agent here is the only setup needed to see it work —
-        // no extra manual component to add.
+        // Piggyback the SLAM beacon visualizer and fog-of-war overlay onto
+        // this same GameObject so selecting an agent here is the only setup
+        // needed to see either work — no extra manual component to add.
         if (GetComponent<SlamDiscoveryBeacons>() == null) gameObject.AddComponent<SlamDiscoveryBeacons>();
+        if (GetComponent<FogOfWarOverlay>() == null) gameObject.AddComponent<FogOfWarOverlay>();
     }
 
     private void Update()

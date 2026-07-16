@@ -493,6 +493,7 @@ MonoBehaviour:
   followDistance: 8
   followHeight: 4
   followLerpSpeed: 5
+  topDownHeight: 45
 --- !u!1 &1159380742
 GameObject:
   m_ObjectHideFlags: 0
@@ -630,7 +631,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: e14dc0ad4e0d8384586de0b5f97da369, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  gridCoordinator: {fileID: 0}
+  gridCoordinator: {fileID: 1159380745}
 --- !u!1 &1297136635
 GameObject:
   m_ObjectHideFlags: 0
