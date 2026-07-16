@@ -449,11 +449,7 @@ namespace ProceduralTerrain
                 for (int y = 0; y < height; y++)
                 {
                     PathfindingNode node = grid[x, y];
-                    Vector3 basePos;
-                    basePos.x = node.WorldPosition.x - width / 2;
-                    basePos.y = node.WorldPosition.y - cellSize / 2;
-                    basePos.z = node.WorldPosition.z - height / 2;
-
+                    Vector3 basePos = node.WorldPosition;
                     Vector2Int pos = new Vector2Int(x, y);
 
                     if (node.Type != BiomeType.Water)
@@ -799,16 +795,6 @@ namespace ProceduralTerrain
             floor.center = new Vector3((physicalWidth / 2f) - (cellSize / 2f), -0.5f, (physicalLength / 2f) - (cellSize / 2f));
 
             Debug.Log($"[TerrainGenerator] Created global BoxCollider ({physicalWidth}x{physicalLength}) for terrain physics!");
-        }
-
-        private void OnEnable()
-        {
-            SimulationEvents.OnNewRandomMap += GenerateNewMap;
-        }
-
-        private void OnDisable()
-        {
-            SimulationEvents.OnNewRandomMap -= GenerateNewMap;
         }
     }
 }

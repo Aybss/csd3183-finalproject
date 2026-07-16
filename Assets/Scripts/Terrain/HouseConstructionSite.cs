@@ -66,6 +66,21 @@ public class HouseConstructionSite : MonoBehaviour
         placeholderRenderer.material = mat;
     }
 
+    // Used by the simulation UI's Restart/Random Map buttons to put the site
+    // back to its starting state instead of leaving stale progress behind.
+    public void ResetProgress()
+    {
+        isFinished = false;
+        currentWoodDeposited = 0;
+        currentStoneDeposited = 0;
+
+        if (houseFinishedModel != null) houseFinishedModel.SetActive(false);
+        if (houseHalfBuiltModel != null) houseHalfBuiltModel.SetActive(false);
+        if (constructionScaffolding != null) constructionScaffolding.SetActive(true);
+
+        UpdateProgressDisplay();
+    }
+
     public void DepositWood(int amount)
     {
         if (isFinished) return;

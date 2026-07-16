@@ -23,6 +23,23 @@ public class SlamDiscoveryBeacons : MonoBehaviour
     private readonly List<Beacon> beacons = new List<Beacon>();
     private bool initialized;
     private float refreshTimer;
+    // Also toggles overall visibility from the simulation UI's "Debug
+    // Drawing" checkbox (see SimulationGameplayBridge) — separate from the
+    // per-beacon discovered/undiscovered state.
+    public bool VisualsEnabled = true;
+
+    // Called after a map regenerates — old beacons point at resource tiles
+    // that may no longer exist (or exist somewhere else entirely), and the
+    // native memory they were reading from was just wiped by re-init.
+    public void ResetBeacons()
+    {
+        foreach (Beacon beacon in beacons)
+        {
+            if (beacon.marker != null) Destroy(beacon.marker);
+        }
+        beacons.Clear();
+        initialized = false;
+    }
 
     private void Update()
     {
@@ -89,6 +106,12 @@ public class SlamDiscoveryBeacons : MonoBehaviour
 
     private void RefreshVisibility()
     {
+        if (!VisualsEnabled)
+        {
+            foreach (Beacon beacon in beacons) beacon.marker.SetActive(false);
+            return;
+        }
+
         AgentStats selected = AgentOverlayUI.SelectedAgent;
         UnityAgent agent = selected != null ? selected.GetComponent<UnityAgent>() : null;
 

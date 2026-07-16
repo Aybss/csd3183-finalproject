@@ -12,6 +12,9 @@ public static class SimulationEvents
     // Agent operations
     public static Action<int>           OnAgentSelected;
     public static Action<int, string>   OnRequestChangeAgentType;
+    public static Action                OnRequestCreateAgent;
+    public static Action<int>           OnRequestViewAgent;
+    public static Action<int>           OnRequestKillAgent;
 
     // Map operations
     public static Action    OnNewRandomMap;

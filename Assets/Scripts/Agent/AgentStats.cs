@@ -33,6 +33,10 @@ public class AgentStats : MonoBehaviour
         isDead = true;
     }
 
+    // Used by the simulation UI's Kill Agent button — an explicit, immediate
+    // death rather than waiting for hunger/thirst to naturally cross 100.
+    public void ForceKill() => Die();
+
     public void DrinkWater() => thirst = Mathf.Max(0f, thirst - 80f);
     public void ConsumeFood() => hunger = Mathf.Max(0f, hunger - 60f);
     public void Rest() => fatigue = Mathf.Max(0f, fatigue - 80f);

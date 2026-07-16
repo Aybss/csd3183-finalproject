@@ -17,10 +17,57 @@ public class GridCoordinator : MonoBehaviour
 
     private List<UnityAgent> activeAgents = new List<UnityAgent>();
 
+    // Fired every time an agent is actually spawned (initial batch or later,
+    // e.g. from the simulation UI's Create Agent button) — lets other
+    // systems (SimulationGameplayBridge) react without polling.
+    public static event System.Action<UnityAgent> OnAgentSpawned;
+
     private void Start()
     {
+        // Always regenerate here rather than relying on PrimsTerrainGenerator's
+        // own Start() having already run — Unity doesn't guarantee execution
+        // order between the two, so this stays self-sufficient.
+        RunSimulationSetup(regenerateMap: true);
+    }
+
+    // Full (re)initialization: clears out any existing agents, optionally
+    // regenerates the terrain, resyncs the native grid, rebuilds the path
+    // network, resets the build site, and spawns a fresh batch of agents.
+    // Used both at first Start() and by the simulation UI's Random Map /
+    // Restart buttons.
+    public void RestartSimulation(bool regenerateMap)
+    {
+        ClearActiveAgents();
+        RunSimulationSetup(regenerateMap);
+    }
+
+    // Same full reset, but replaces the map with a previously saved layout
+    // instead of generating a new one. Used by the simulation UI's Load Map
+    // button.
+    public void LoadSimulationFromSchema(ProceduralTerrain.GridSaveSchema schema)
+    {
+        if (schema == null) return;
+
+        ClearActiveAgents();
+        terrainGenerator.ReconstructMapFromSchema(schema);
+        RunSimulationSetup(regenerateMap: false);
+    }
+
+    private void ClearActiveAgents()
+    {
+        foreach (UnityAgent agent in activeAgents)
+        {
+            if (agent != null) Destroy(agent.gameObject);
+        }
+        activeAgents.Clear();
+
+        if (HouseConstructionSite.Instance != null) HouseConstructionSite.Instance.ResetProgress();
+    }
+
+    private void RunSimulationSetup(bool regenerateMap)
+    {
         // 1. Generate the map procedurally in C# first
-        terrainGenerator.GenerateNewMap();
+        if (regenerateMap) terrainGenerator.GenerateNewMap();
 
         // 2. Sync Unity grid layout data directly with the C++ DLL
         SyncProceduralGridWithNative();
@@ -117,6 +164,7 @@ public class GridCoordinator : MonoBehaviour
             unityAgent.Initialize(nativeHandle, agentRole, size);
             activeAgents.Add(unityAgent);
             Debug.Log($"[GridCoordinator] Spawned Agent {activeAgents.Count} (Role: {agentRole}) at grid ({gridPos.x}, {gridPos.y}) with C++ Handle: {nativeHandle}");
+            OnAgentSpawned?.Invoke(unityAgent);
         }
         else
         {

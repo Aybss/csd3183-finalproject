@@ -90,6 +90,8 @@ public class AgentOverlayUI : MonoBehaviour
             RescanAgents();
         }
 
+        RemoveStaleRows();
+
         foreach (var pair in rows)
         {
             AgentStats stats = pair.Key;
@@ -179,6 +181,32 @@ public class AgentOverlayUI : MonoBehaviour
         {
             if (rows.ContainsKey(stats)) continue;
             rows[stats] = CreateRow(stats);
+        }
+    }
+
+    // Destroyed agents (e.g. from a simulation Restart/Random Map) would
+    // otherwise leave their row stuck in the list forever, since nothing
+    // else ever removes entries from `rows`.
+    private void RemoveStaleRows()
+    {
+        List<AgentStats> stale = null;
+        foreach (var pair in rows)
+        {
+            if (pair.Key != null) continue; // Unity fake-null check: still-alive vs destroyed
+            stale ??= new List<AgentStats>();
+            stale.Add(pair.Key);
+            if (pair.Value.root != null) Destroy(pair.Value.root);
+        }
+
+        if (stale == null) return;
+
+        foreach (AgentStats key in stale)
+        {
+            rows.Remove(key);
+            // ReferenceEquals, not ==, since Unity's == on a destroyed object
+            // already reads as "null" and would make a plain comparison here
+            // always miss.
+            if (System.Object.ReferenceEquals(key, selectedStats)) Deselect();
         }
     }
 
@@ -402,8 +430,11 @@ public class AgentOverlayUI : MonoBehaviour
         };
     }
 
-    private void SelectAgent(AgentStats stats)
+    // Public so SimulationGameplayBridge can trigger the same select+camera-
+    // lock behavior from the simulation UI's "View Agent" button.
+    public void SelectAgent(AgentStats stats)
     {
+        if (stats == null) return;
         if (cameraController == null) cameraController = FindObjectOfType<FreeFlyCamera>();
 
         if (selectedStats == stats)
@@ -417,7 +448,7 @@ public class AgentOverlayUI : MonoBehaviour
         if (cameraController != null) cameraController.SetLockedTarget(stats.transform);
     }
 
-    private void Deselect()
+    public void Deselect()
     {
         selectedStats = null;
         SelectedAgent = null;
