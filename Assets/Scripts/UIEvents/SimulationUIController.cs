@@ -68,15 +68,11 @@ public class SimulationUIController : MonoBehaviour
             SimulationEvents.OnNewRandomMap?.Invoke();
         });
 
-        // Load Map from file
-        LoadMapButton.onClick.AddListener(() => {
-            SimulationEvents.OnLoadMap?.Invoke();
-        });
+        // Load Map and Map Editor were removed — hide the buttons instead of
+        // leaving them visible with no listener attached.
+        LoadMapButton.gameObject.SetActive(false);
+        OpenMapEditorButton.gameObject.SetActive(false);
 
-        OpenMapEditorButton.onClick.AddListener(() => {
-            SimulationEvents.OnOpenMapEditorButton?.Invoke();
-        });
-        
 
         // Broadcast simulation events -----------------------------------------------//
         // ---------------------------------------------------------------------------//

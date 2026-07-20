@@ -18,7 +18,7 @@ public class AgentStats : MonoBehaviour
     {
         if (isDead) return;
 
-        thirst += 2.0f * Time.deltaTime;
+        thirst += 1.0f * Time.deltaTime; // was 2.0 — gave agents too little time to find/reach water before dying
         hunger += 0.8f * Time.deltaTime; // was 1.5 — hit critical/death too fast to demo GOAP behavior over time
         fatigue += 1.0f * Time.deltaTime;
 

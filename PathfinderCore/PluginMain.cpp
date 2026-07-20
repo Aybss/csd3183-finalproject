@@ -312,7 +312,7 @@ extern "C" {
 
         if (agentHandle >= 0 && agentHandle < static_cast<int>(g_agentProfiles.size()))
         {
-            if (g_agentProfiles[agentHandle].disability == DisabilityType::WheelchairUser && g_grid.GetCellType(x, y) == 2)
+            if (g_agentProfiles[agentHandle].disability == DisabilityType::WheelchairUser && g_grid.GetCellType(x, y) == CellTypeCode::Rubble)
                 return 0;
         }
 

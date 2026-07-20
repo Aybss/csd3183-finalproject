@@ -22,6 +22,15 @@ enum class AgentRole : int
     Deaf = 2
 };
 
+// CellType codes set from Unity (see GridCoordinator.SyncProceduralGridWithNative):
+// 2 = rubble (impassable for WheelchairBound), 3 = water crossing / bridge
+// (costly, not blocking, for WheelchairBound). Default/unset is 0.
+namespace CellTypeCode
+{
+    constexpr int Rubble = 2;
+    constexpr int WaterCrossing = 3;
+}
+
 // Wraps a shared AStarGrid with one agent's role constraints.
 class Agent
 {
@@ -40,4 +49,5 @@ private:
 
     int Index(int x, int y) const;
     float SoundPenaltyAt(int x, int y, const std::vector<SoundCue>& activeSounds) const;
+    float RoleCellCostMultiplier(int x, int y) const;
 };

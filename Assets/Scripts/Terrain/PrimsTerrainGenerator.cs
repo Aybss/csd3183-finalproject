@@ -33,13 +33,13 @@ namespace ProceduralTerrain
 
         [Header("Prim's Algorithm Water Network")]
         [Tooltip("Water-network seed points connected by a genuine Prim's-algorithm MST (PathNetwork.cpp) — randomizes the river layout every generation while keeping it a single connected network instead of scattered disconnected lakes.")]
-        [Range(2, 8)] public int waterSeedCount = 4;
+        [Range(2, 8)] public int waterSeedCount = 6;
 
         [Header("Random Small Water Bodies")]
         [Tooltip("Number of random small ponds to seed across the plains.")]
-        public int pondCount = 5;
+        public int pondCount = 12;
         [Tooltip("Maximum size parameter for seeded ponds.")]
-        [Range(1, 4)] public int maxPondRadius = 2;
+        [Range(1, 4)] public int maxPondRadius = 3;
 
         [Header("Kenney Asset Alignment Helper")]
         [Tooltip("Nudges all calculated river rotations in steps of 90 degrees.")]
@@ -51,7 +51,6 @@ namespace ProceduralTerrain
         public int forcedBridgeInterval = 12;
 
         public KenneyTileConfiguration tilePack;
-        public GridSaveSystem saveSystem;
 
         private PathfindingNode[,] grid;
         private HashSet<Vector2Int> spawnedBridgeCoordinates = new HashSet<Vector2Int>();
@@ -674,6 +673,11 @@ namespace ProceduralTerrain
         // constraint is visually obvious, not just a hidden pathing rule.
         private HashSet<Vector2Int> rubbleCoordinates = new HashSet<Vector2Int>();
         public IReadOnlyCollection<Vector2Int> RubbleTiles => rubbleCoordinates;
+
+        // Forced bridge tiles (native CellType 3, see Agent::FindPath) — walkable
+        // by every role, but far costlier for WheelchairBound to cross than open
+        // ground, modeling how much harder a narrow river crossing is to wheel over.
+        public IReadOnlyCollection<Vector2Int> BridgeTiles => forcedBridgeCoordinates;
 
         private void MarkRubbleAroundStoneDeposits()
         {

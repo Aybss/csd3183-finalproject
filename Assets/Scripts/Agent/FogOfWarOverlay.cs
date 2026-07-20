@@ -105,7 +105,14 @@ public class FogOfWarOverlay : MonoBehaviour
         filter.mesh = mesh;
 
         MeshRenderer renderer = quadObject.AddComponent<MeshRenderer>();
-        fogMaterial = new Material(Shader.Find("Unlit/Transparent"));
+        // Sprites/Default, not Unlit/Transparent: shaders only ever reached
+        // via Shader.Find (never referenced by a serialized asset) get
+        // stripped from a real build by Unity's build-time shader analysis —
+        // the Editor has every shader loaded so this never shows up there.
+        // Sprites/Default is already guaranteed present (it's in this
+        // project's Graphics Settings "Always Included Shaders" list) and
+        // handles a textured, per-pixel-alpha quad exactly as well.
+        fogMaterial = new Material(Shader.Find("Sprites/Default"));
         fogMaterial.mainTexture = fogTexture;
         renderer.material = fogMaterial;
         renderer.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;

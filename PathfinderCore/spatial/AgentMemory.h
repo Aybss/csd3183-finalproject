@@ -34,17 +34,22 @@ struct AgentMemory {
         campY = -1;
     }
 
-    // SLAM Sync: merge another agent's knowledge into this one.
+    // SLAM Sync: bitwise merge of another agent's knowledge into this one.
+    // Every accumulated layer (everything except discoveredWalls, which
+    // trusts the other agent's latest read outright) uses |= rather than
+    // logical-OR — a plain bitwise-OR-assignment against each bool's 0/1
+    // representation, since both operands are already-evaluated reads with
+    // no short-circuit-relevant side effects.
     void Merge(const AgentMemory& other) {
         int totalCells = exploredTiles.get_width() * exploredTiles.get_height();
         for (int i = 0; i < totalCells; ++i) {
             if (other.exploredTiles[i]) {
-                exploredTiles[i] = true;
+                exploredTiles[i] |= other.exploredTiles[i];
                 discoveredWalls[i] = other.discoveredWalls[i];
-                discoveredWood[i] = discoveredWood[i] || other.discoveredWood[i];
-                discoveredFood[i] = discoveredFood[i] || other.discoveredFood[i];
-                discoveredStone[i] = discoveredStone[i] || other.discoveredStone[i];
-                discoveredWaterEdge[i] = discoveredWaterEdge[i] || other.discoveredWaterEdge[i];
+                discoveredWood[i] |= other.discoveredWood[i];
+                discoveredFood[i] |= other.discoveredFood[i];
+                discoveredStone[i] |= other.discoveredStone[i];
+                discoveredWaterEdge[i] |= other.discoveredWaterEdge[i];
             }
         }
 

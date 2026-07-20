@@ -1,6 +1,4 @@
-using System.IO;
 using UnityEngine;
-using UnityEngine.SceneManagement;
 using ProceduralTerrain;
 
 // Wires SimulationEvents (fired by SimulationUIController's buttons/sliders)
@@ -34,8 +32,6 @@ public class SimulationGameplayBridge : MonoBehaviour
     {
         SimulationEvents.OnNewRandomMap += HandleNewRandomMap;
         SimulationEvents.OnRestart += HandleRestart;
-        SimulationEvents.OnLoadMap += HandleLoadMap;
-        SimulationEvents.OnOpenMapEditorButton += HandleOpenMapEditor;
         SimulationEvents.OnMapAlignmentToggled += HandleMapAlignmentToggled;
         SimulationEvents.OnSpeedChanged += HandleSpeedChanged;
         SimulationEvents.OnPause += HandlePause;
@@ -52,8 +48,6 @@ public class SimulationGameplayBridge : MonoBehaviour
     {
         SimulationEvents.OnNewRandomMap -= HandleNewRandomMap;
         SimulationEvents.OnRestart -= HandleRestart;
-        SimulationEvents.OnLoadMap -= HandleLoadMap;
-        SimulationEvents.OnOpenMapEditorButton -= HandleOpenMapEditor;
         SimulationEvents.OnMapAlignmentToggled -= HandleMapAlignmentToggled;
         SimulationEvents.OnSpeedChanged -= HandleSpeedChanged;
         SimulationEvents.OnPause -= HandlePause;
@@ -73,6 +67,7 @@ public class SimulationGameplayBridge : MonoBehaviour
         if (gridCoordinator == null) return;
         agentManager?.ClearAllAgents();
         FindObjectOfType<SlamDiscoveryBeacons>()?.ResetBeacons();
+        FindObjectOfType<FoodSoundCue>()?.ResetEmitters();
         gridCoordinator.RestartSimulation(regenerateMap: true);
     }
 
@@ -81,58 +76,6 @@ public class SimulationGameplayBridge : MonoBehaviour
         if (gridCoordinator == null) return;
         agentManager?.ClearAllAgents();
         gridCoordinator.RestartSimulation(regenerateMap: false);
-    }
-
-    // Loads the most recently saved map (there's no Save button or file
-    // picker in this panel, so "most recent .json in the save folder" is
-    // the only unambiguous choice available).
-    private void HandleLoadMap()
-    {
-        if (gridCoordinator == null || gridCoordinator.terrainGenerator == null) return;
-
-        PrimsTerrainGenerator generator = gridCoordinator.terrainGenerator;
-        if (generator.saveSystem == null)
-        {
-            Debug.LogWarning("[SimulationGameplayBridge] PrimsTerrainGenerator has no GridSaveSystem assigned — can't load a map.");
-            return;
-        }
-
-        string saveDir = Path.Combine(Application.persistentDataPath, "SavedMaps");
-        if (!Directory.Exists(saveDir))
-        {
-            Debug.LogWarning("[SimulationGameplayBridge] No saved maps found to load.");
-            return;
-        }
-
-        string[] files = Directory.GetFiles(saveDir, "*.json");
-        if (files.Length == 0)
-        {
-            Debug.LogWarning("[SimulationGameplayBridge] No saved maps found to load.");
-            return;
-        }
-
-        string newestFile = files[0];
-        foreach (string file in files)
-        {
-            if (File.GetLastWriteTimeUtc(file) > File.GetLastWriteTimeUtc(newestFile)) newestFile = file;
-        }
-
-        string filename = Path.GetFileNameWithoutExtension(newestFile);
-        ProceduralTerrain.GridSaveSchema schema = generator.saveSystem.LoadMapData(filename);
-        if (schema == null) return;
-
-        agentManager?.ClearAllAgents();
-        FindObjectOfType<SlamDiscoveryBeacons>()?.ResetBeacons();
-        gridCoordinator.LoadSimulationFromSchema(schema);
-    }
-
-    // Switches to the LevelEditor scene (SampleScene). Both scenes are now
-    // registered in Build Settings — SceneManager.LoadScene needs that to
-    // find a scene by name at all, in-editor or in a build.
-    private void HandleOpenMapEditor()
-    {
-        Time.timeScale = 1f; // don't carry a paused/slow timescale into the editor scene
-        SceneManager.LoadScene("SampleScene");
     }
 
     // "Map Alignment" originally meant a coordinate shift applied only to

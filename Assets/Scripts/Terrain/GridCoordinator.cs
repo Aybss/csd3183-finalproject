@@ -41,18 +41,6 @@ public class GridCoordinator : MonoBehaviour
         RunSimulationSetup(regenerateMap);
     }
 
-    // Same full reset, but replaces the map with a previously saved layout
-    // instead of generating a new one. Used by the simulation UI's Load Map
-    // button.
-    public void LoadSimulationFromSchema(ProceduralTerrain.GridSaveSchema schema)
-    {
-        if (schema == null) return;
-
-        ClearActiveAgents();
-        terrainGenerator.ReconstructMapFromSchema(schema);
-        RunSimulationSetup(regenerateMap: false);
-    }
-
     private void ClearActiveAgents()
     {
         foreach (UnityAgent agent in activeAgents)
@@ -108,6 +96,14 @@ public class GridCoordinator : MonoBehaviour
         foreach (Vector2Int rubble in terrainGenerator.RubbleTiles)
         {
             NativeBridge.SetCellType(rubble.x, rubble.y, 2);
+        }
+
+        // Bridge tiles (native CellType 3) — walkable for everyone, but far
+        // costlier for WheelchairBound agents to cross (see Agent::FindPath's
+        // RoleCellCostMultiplier).
+        foreach (Vector2Int bridge in terrainGenerator.BridgeTiles)
+        {
+            NativeBridge.SetCellType(bridge.x, bridge.y, 3);
         }
 
         NativeBridge.SetCampPosition(spawnBaseCoordinates.x, spawnBaseCoordinates.y);

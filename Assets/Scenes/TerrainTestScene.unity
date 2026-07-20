@@ -266,9 +266,9 @@ MonoBehaviour:
   riverMeanderFrequency: 0.1
   riverMaxMeanderAmplitude: 12
   riverTileThickness: 3
-  waterSeedCount: 4
-  pondCount: 5
-  maxPondRadius: 2
+  waterSeedCount: 6
+  pondCount: 12
+  maxPondRadius: 3
   riverRotationOffsetSteps: 1
   minBridgeSpacing: 3
   forcedBridgeInterval: 12

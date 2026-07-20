@@ -14,6 +14,18 @@ void Agent::Init(AStarGrid* world, AgentRole role)
     _role = role;
 }
 
+float Agent::RoleCellCostMultiplier(int x, int y) const
+{
+    // WheelchairBound: rubble (CellTypeCode::Rubble) is fully blocked in
+    // isBlocked() below; a water crossing (CellTypeCode::WaterCrossing —
+    // bridge tiles, the only walkable "water" cells) isn't blocked, since the
+    // map must stay traversable for every role, but a bridge is much harder
+    // to wheel across than open ground, so it costs more instead.
+    if (_role == AgentRole::WheelchairBound && _world->GetCellType(x, y) == CellTypeCode::WaterCrossing)
+        return 4.0f;
+    return 1.0f;
+}
+
 float Agent::SoundPenaltyAt(int x, int y, const std::vector<SoundCue>& activeSounds) const
 {
     if (_role == AgentRole::Deaf) return 0.0f; // Deaf: completely ignore sound cues
@@ -70,8 +82,8 @@ std::vector<PathNode> Agent::FindPath(int startX, int startY, int endX, int endY
     auto isBlocked = [&](int x, int y) {
         if (_world->IsBlocked(x, y)) return true;
 
-        // WheelchairBound cannot traverse Stairs (represented by CellType 2)
-        if (_role == AgentRole::WheelchairBound && _world->GetCellType(x, y) == 2) return true;
+        // WheelchairBound cannot traverse rubble (represented by CellTypeCode::Rubble)
+        if (_role == AgentRole::WheelchairBound && _world->GetCellType(x, y) == CellTypeCode::Rubble) return true;
 
         return false;
         };
@@ -121,7 +133,7 @@ std::vector<PathNode> Agent::FindPath(int startX, int startY, int endX, int endY
             if (closed[nIndex]) continue;
 
             float baseMoveCost = (dx[i] != 0 && dy[i] != 0) ? diagonalCost : straightCost;
-            float weightedMoveCost = baseMoveCost * _world->GetCellWeight(nx, ny);
+            float weightedMoveCost = baseMoveCost * _world->GetCellWeight(nx, ny) * RoleCellCostMultiplier(nx, ny);
             float moveCost = weightedMoveCost + SoundPenaltyAt(nx, ny, activeSounds);
             float tentativeG = gCost[current.index] + moveCost;
 

@@ -18,6 +18,4 @@ public static class SimulationEvents
 
     // Map operations
     public static Action    OnNewRandomMap;
-    public static Action    OnLoadMap;
-    public static Action    OnOpenMapEditorButton;
 }

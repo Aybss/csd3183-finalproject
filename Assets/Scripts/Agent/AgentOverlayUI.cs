@@ -80,6 +80,7 @@ public class AgentOverlayUI : MonoBehaviour
         // needed to see either work — no extra manual component to add.
         if (GetComponent<SlamDiscoveryBeacons>() == null) gameObject.AddComponent<SlamDiscoveryBeacons>();
         if (GetComponent<FogOfWarOverlay>() == null) gameObject.AddComponent<FogOfWarOverlay>();
+        if (GetComponent<FoodSoundCue>() == null) gameObject.AddComponent<FoodSoundCue>();
     }
 
     private void Update()

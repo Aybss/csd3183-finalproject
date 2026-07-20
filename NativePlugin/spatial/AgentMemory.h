@@ -26,7 +26,7 @@ struct AgentMemory {
         buildSiteCol = -1;
     }
 
-    // SLAM Sync: Bitwise merge when two agents overlap communication range
+    // SLAM Sync: per-tile union merge when two agents overlap communication range
     void Merge(const AgentMemory& other) {
         int totalCells = exploredTiles.get_width() * exploredTiles.get_height();
         for (int i = 0; i < totalCells; ++i) {

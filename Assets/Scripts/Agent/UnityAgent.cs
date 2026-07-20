@@ -10,6 +10,12 @@ public class UnityAgent : MonoBehaviour
     public float movementSpeed = 5f;
     public float cellSize = 1f;
 
+    // Wheelchair users are visibly slower over ground than the other roles —
+    // mirrors the extra pathing cost RoleCellCostMultiplier gives them on
+    // bridges natively, but this affects every tile, not just bridges.
+    private static readonly float[] RoleSpeedMultiplier = { 0.6f, 1f, 1f }; // WheelchairBound, Blind, Deaf
+    private float effectiveMovementSpeed = 5f; // overwritten by Initialize(); this default only matters if Initialize is never called
+
     private List<Vector2Int> currentPath = new List<Vector2Int>();
     private int currentPathIndex = 0;
     private Vector2Int lastGridPosition = new Vector2Int(-1, -1);
@@ -65,6 +71,9 @@ public class UnityAgent : MonoBehaviour
         agentHandle = handle;
         role = roleType;
         cellSize = size;
+
+        float multiplier = (roleType >= 0 && roleType < RoleSpeedMultiplier.Length) ? RoleSpeedMultiplier[roleType] : 1f;
+        effectiveMovementSpeed = movementSpeed * multiplier;
 
         ImpairmentVisuals.Apply(gameObject, (AgentRoleType)roleType, size);
     }
@@ -123,7 +132,7 @@ public class UnityAgent : MonoBehaviour
 
         // Move via Rigidbody so gravity and collisions actually apply � this is
         // what keeps the agent on solid ground and stops it at obstacles/other agents.
-        Vector3 newPos = Vector3.MoveTowards(rb.position, targetWorldPos, movementSpeed * Time.fixedDeltaTime);
+        Vector3 newPos = Vector3.MoveTowards(rb.position, targetWorldPos, effectiveMovementSpeed * Time.fixedDeltaTime);
         rb.MovePosition(newPos);
 
         int currentX = Mathf.RoundToInt(rb.position.x / cellSize);
