@@ -1,5 +1,6 @@
 using UnityEngine;
 using System.Collections.Generic;
+using System.Linq;
 using ProceduralTerrain;
 
 public class GridCoordinator : MonoBehaviour
@@ -115,24 +116,63 @@ public class GridCoordinator : MonoBehaviour
 
     private void SpawnMultipleAgents()
     {
-        int spawnedCount = 0;
-        int maxAttempts = totalAgentsToSpawn * 5; // Guard rails to prevent infinite loops
+        var usedPositions = new HashSet<Vector2Int>();
 
-        // Try to find unique nearby grid spaces to prevent physics collision bugs
-        for (int xOffset = 0; xOffset < 5 && spawnedCount < totalAgentsToSpawn; xOffset++)
+        for (int i = 0; i < totalAgentsToSpawn; i++)
         {
-            for (int yOffset = 0; yOffset < 5 && spawnedCount < totalAgentsToSpawn; yOffset++)
+            // Keep the dynamic assignment of physical C++ roles balanced
+            // Cycles: 0 = WheelchairBound, 1 = Blind, 2 = Deaf
+            int assignedRole = i % 3;
+            Vector2Int spawnPos = FindNearestValidSpawnTile(spawnBaseCoordinates, assignedRole, usedPositions);
+            usedPositions.Add(spawnPos);
+            SpawnAgentInWorld(spawnPos, assignedRole);
+        }
+    }
+
+    // Expanding-ring search outward from `near` for the closest tile that's
+    // walkable, not sitting on a resource prop, and not rubble for
+    // WheelchairBound specifically — used both by the initial spawn batch
+    // (which also excludes tiles already claimed this batch) and by any
+    // one-off spawn (the simulation UI's Create Agent button, agent type
+    // reassignment), so no spawn path ever places an agent on water,
+    // rubble it can't stand on, or a resource tile.
+    public Vector2Int FindNearestValidSpawnTile(Vector2Int near, int role, HashSet<Vector2Int> exclude = null, int maxSearchRadius = 20)
+    {
+        for (int radius = 0; radius <= maxSearchRadius; radius++)
+        {
+            for (int xOffset = -radius; xOffset <= radius; xOffset++)
             {
-                Vector2Int spawnPos = new Vector2Int(spawnBaseCoordinates.x + xOffset, spawnBaseCoordinates.y + yOffset);
+                for (int yOffset = -radius; yOffset <= radius; yOffset++)
+                {
+                    // Only the outer ring of this radius — smaller radii already covered the interior.
+                    if (Mathf.Max(Mathf.Abs(xOffset), Mathf.Abs(yOffset)) != radius) continue;
 
-                // Keep the dynamic assignment of physical C++ roles balanced
-                // Cycles: 0 = WheelchairBound, 1 = Blind, 2 = Deaf
-                int assignedRole = spawnedCount % 3;
-
-                SpawnAgentInWorld(spawnPos, assignedRole);
-                spawnedCount++;
+                    Vector2Int candidate = near + new Vector2Int(xOffset, yOffset);
+                    if (exclude != null && exclude.Contains(candidate)) continue;
+                    if (IsValidSpawnTile(candidate, role)) return candidate;
+                }
             }
         }
+
+        Debug.LogWarning($"[GridCoordinator] No valid empty, walkable spawn tile found within {maxSearchRadius} tiles of {near}; spawning there anyway.");
+        return near;
+    }
+
+    // A tile is a valid spawn point if it's walkable, not sitting on a
+    // resource prop (Wood/Food/Stone), and — for WheelchairBound specifically
+    // — not rubble (Agent::FindPath blocks that role there, even though the
+    // tile reads as generically walkable to everyone else).
+    private bool IsValidSpawnTile(Vector2Int pos, int role)
+    {
+        if (NativeBridge.IsWalkable(pos.x, pos.y) == 0) return false;
+
+        BiomeType biome = terrainGenerator.GetBiomeAt(pos.x, pos.y);
+        if (biome == BiomeType.Wood || biome == BiomeType.Food || biome == BiomeType.Stone) return false;
+
+        bool isWheelchairBound = role == (int)AgentRoleType.WheelchairBound;
+        if (isWheelchairBound && terrainGenerator.RubbleTiles.Contains(pos)) return false;
+
+        return true;
     }
 
     public void SpawnAgentInWorld(Vector2Int gridPos, int agentRole)

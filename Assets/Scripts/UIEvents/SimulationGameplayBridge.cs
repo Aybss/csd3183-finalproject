@@ -142,7 +142,8 @@ public class SimulationGameplayBridge : MonoBehaviour
         if (gridCoordinator == null) return;
 
         int role = agentManager != null ? agentManager.activeAgents.Count % 3 : 0;
-        Vector2Int spawnPos = gridCoordinator.spawnBaseCoordinates + new Vector2Int(Random.Range(-2, 3), Random.Range(-2, 3));
+        Vector2Int near = gridCoordinator.spawnBaseCoordinates + new Vector2Int(Random.Range(-2, 3), Random.Range(-2, 3));
+        Vector2Int spawnPos = gridCoordinator.FindNearestValidSpawnTile(near, role);
         gridCoordinator.SpawnAgentInWorld(spawnPos, role);
     }
 
@@ -177,12 +178,16 @@ public class SimulationGameplayBridge : MonoBehaviour
         if (oldAgent == null) return;
 
         int newRole = RoleIndexFromTypeName(newType);
-        Vector2Int gridPos = new Vector2Int(
+        Vector2Int oldGridPos = new Vector2Int(
             Mathf.RoundToInt(oldAgent.transform.position.x / oldAgent.cellSize),
             Mathf.RoundToInt(oldAgent.transform.position.z / oldAgent.cellSize));
 
+        // The old tile was valid for the old role, but not necessarily for
+        // the new one (e.g. changing to WheelchairBound onto a rubble tile).
+        Vector2Int spawnPos = gridCoordinator.FindNearestValidSpawnTile(oldGridPos, newRole);
+
         agentManager.KillAgent(oldController); // removes from list, destroys, refreshes dropdown
-        gridCoordinator.SpawnAgentInWorld(gridPos, newRole);
+        gridCoordinator.SpawnAgentInWorld(spawnPos, newRole);
     }
 
     private int RoleIndexFromTypeName(string typeName)

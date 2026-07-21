@@ -441,6 +441,18 @@ extern "C" {
         UpdatePhysicalSenses(x, y, g_worldGrid, g_agentMemories[agentHandle], g_agentProfiles[agentHandle]);
     }
 
+    // Called from Unity when a food tile's periodic sound pulse fires
+    // (FoodSoundCue.cs) and this agent is within broadcast range of it —
+    // reveals the area around the food the same way a sight sweep would.
+    // Deaf agents (hearingRange <= 0) get nothing: sound pulses don't reach
+    // them at all, the same rule every other sound-based mechanic here uses.
+    __declspec(dllexport) void RevealAreaForAgent(int agentHandle, int centerX, int centerY, int radius)
+    {
+        if (agentHandle < 0 || agentHandle >= static_cast<int>(g_agentMemories.size())) return;
+        if (g_agentProfiles[agentHandle].hearingRange <= 0) return;
+        RevealRadiusInstant(centerX, centerY, radius, g_worldGrid, g_agentMemories[agentHandle]);
+    }
+
     // Called when two agents come within communication range of each other —
     // the SLAM "loop closure" step: each agent adopts everything the other
     // has explored so far.

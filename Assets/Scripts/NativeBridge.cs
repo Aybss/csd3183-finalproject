@@ -55,6 +55,13 @@ public static class NativeBridge
     [DllImport(DllName, CallingConvention = CallingConvention.Cdecl)]
     public static extern void TriggerSLAMSync(int agentHandleA, int agentHandleB);
 
+    // SLAM: reveals a radius around (centerX, centerY) for one agent, same as
+    // a sight sweep would — used by FoodSoundCue.cs to broadcast a food
+    // tile's periodic sound pulse to nearby agents. No-ops for Deaf agents
+    // (hearingRange <= 0) on the native side.
+    [DllImport(DllName, CallingConvention = CallingConvention.Cdecl)]
+    public static extern void RevealAreaForAgent(int agentHandle, int centerX, int centerY, int radius);
+
     // SLAM visualization: has this specific agent's own memory discovered
     // this resource tile yet? biomeType 2=Wood, 3=Food, 4=Stone.
     [DllImport(DllName, CallingConvention = CallingConvention.Cdecl)]

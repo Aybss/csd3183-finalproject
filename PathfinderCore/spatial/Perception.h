@@ -31,13 +31,16 @@ namespace
     }
 }
 
-inline void UpdatePhysicalSenses(int x, int y, const WorldGrid& grid, AgentMemory& memory, const AgentProfile& profile) {
-    int sight = profile.sightRadius;
-
-    for (int dx = -sight; dx <= sight; ++dx) {
-        for (int dy = -sight; dy <= sight; ++dy) {
-            int tx = x + dx;
-            int ty = y + dy;
+// Instantly reveals every tile within `radius` of (cx, cy) into `memory` —
+// shared by the sight sweep below and by PluginMain.cpp's
+// RevealAreaForAgent (a food tile's periodic sound pulse, broadcast from
+// FoodSoundCue.cs, uses this same instant full reveal rather than the slow
+// probabilistic ambient-hearing one further down).
+inline void RevealRadiusInstant(int cx, int cy, int radius, const WorldGrid& grid, AgentMemory& memory) {
+    for (int dx = -radius; dx <= radius; ++dx) {
+        for (int dy = -radius; dy <= radius; ++dy) {
+            int tx = cx + dx;
+            int ty = cy + dy;
             if (tx < 0 || tx >= grid.width || ty < 0 || ty >= grid.height) continue;
 
             memory.exploredTiles.at(ty, tx) = true;
@@ -57,6 +60,10 @@ inline void UpdatePhysicalSenses(int x, int y, const WorldGrid& grid, AgentMemor
             }
         }
     }
+}
+
+inline void UpdatePhysicalSenses(int x, int y, const WorldGrid& grid, AgentMemory& memory, const AgentProfile& profile) {
+    RevealRadiusInstant(x, y, profile.sightRadius, grid, memory);
 
     // Hearing, much farther than sight, ignores walls (models sound
     // travelling/rustling rather than line-of-sight). hearingRange <= 0
